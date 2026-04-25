@@ -1,0 +1,81 @@
+services:
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+    image: mybench-openclaw-gateway:local
+    user: "0:0"
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    environment:
+      CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      HOME: /home/node
+      TERM: xterm-256color
+      TZ: ${OPENCLAW_TZ:-America/Denver}
+      OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18789}
+      OPENCLAW_GATEWAY_BIND: ${OPENCLAW_GATEWAY_BIND:-lan}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-change-me}
+      OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-1}
+      OPENCLAW_SANDBOX_IMAGE: ${OPENCLAW_SANDBOX_IMAGE:-mybench-openclaw-sandbox:local}
+      OPENCLAW_SANDBOX_MODE: ${OPENCLAW_SANDBOX_MODE:-all}
+      OPENCLAW_SANDBOX_SCOPE: ${OPENCLAW_SANDBOX_SCOPE:-session}
+      OPENCLAW_SANDBOX_WORKSPACE_ACCESS: ${OPENCLAW_SANDBOX_WORKSPACE_ACCESS:-none}
+      OPENCLAW_SANDBOX_NETWORK: ${OPENCLAW_SANDBOX_NETWORK:-bridge}
+      MYBENCH_PROVIDER: ${MYBENCH_PROVIDER:-}
+      MYBENCH_LOCAL_MODEL: ${MYBENCH_LOCAL_MODEL:-}
+      MYBENCH_LOCAL_FAST: ${MYBENCH_LOCAL_FAST:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./.openclaw-local:/home/node/.openclaw
+      - .:/home/node/.openclaw/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  openclaw-cli:
+    image: mybench-openclaw-gateway:local
+    user: "0:0"
+    network_mode: "service:openclaw-gateway"
+    stdin_open: true
+    tty: true
+    init: true
+    depends_on:
+      - openclaw-gateway
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      TZ: ${OPENCLAW_TZ:-America/Denver}
+      BROWSER: echo
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-change-me}
+      OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-1}
+      MYBENCH_PROVIDER: ${MYBENCH_PROVIDER:-}
+      MYBENCH_LOCAL_MODEL: ${MYBENCH_LOCAL_MODEL:-}
+      MYBENCH_LOCAL_FAST: ${MYBENCH_LOCAL_FAST:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./.openclaw-local:/home/node/.openclaw
+      - .:/home/node/.openclaw/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["node", "dist/index.js"]
+
+  openclaw-sandbox-image:
+    build:
+      context: .
+      dockerfile: docker/sandbox.Dockerfile
+    image: mybench-openclaw-sandbox:local
+    profiles: ["build-only"]
