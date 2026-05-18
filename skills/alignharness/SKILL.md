@@ -1,21 +1,34 @@
 ---
 name: alignharness
-description: Benchmark whether an AI setup matches a user preference by generating test prompts, comparing a default response against a custom prompt, and proposing an improved system prompt when the custom setup loses.
+description: Turn user preference profiles into Promptfoo regression suites, with optional judge-based A/B runners for semantic prompt comparisons.
 metadata: {"openclaw":{"requires":{"bins":["node","python3"]}},"codex":{"requires":{"bins":["node","python3"]}}}
 ---
 
 # AlignHarness
 
-Use this skill when the user wants to test whether an AI actually behaves the way they prefer, or wants to compare a default assistant against a custom system prompt.
+Use this skill when the user wants to test whether an AI actually behaves the way they prefer, build a regression suite from preference YAML, or compare a default assistant against a custom system prompt.
 
 ## Agent surfaces
 
 - In Codex, install this folder to `~/.codex/skills/alignharness` or run `scripts/install-codex-skill.ps1` from this skill directory on Windows.
 - In Claude Code, use the repo slash command at `.claude/commands/alignharness.md`.
 - In OpenClaw, keep using this same `skills/alignharness` folder as the workspace skill.
-- Keep all agent surfaces pointed at the same runners: `scripts/run-alignharness.mjs` for single-intent checks and `scripts/run-profile.mjs` for the full preference profile.
+- Prefer `scripts/export-promptfoo.mjs` for local/offline regression suites. Use `scripts/run-profile.mjs` only when the user explicitly wants judge-based A/B comparison or prompt improvement.
 
-## Provider options
+## Preferred architecture
+
+AlignHarness owns the preference schema and examples. Promptfoo owns provider execution, UI, reporting, and CI.
+
+```text
+preferences.yaml + cases.json + system-prompt.txt
+  -> export-promptfoo.mjs
+  -> promptfooconfig.yaml
+  -> promptfoo eval
+```
+
+This path uses deterministic JavaScript rubrics. The scoring layer is deterministic; model outputs may still vary unless the backend is configured with temperature 0 and stable model settings.
+
+## Provider options for legacy runners
 
 | Provider | How it works | When to use |
 |---|---|---|
@@ -24,7 +37,21 @@ Use this skill when the user wants to test whether an AI actually behaves the wa
 | `openai` | OpenAI API | Cloud, best quality |
 | `anthropic` | Anthropic API | Cloud, best quality |
 
-## Quick start (local GGUF, no Docker needed)
+## Quick start: Promptfoo export
+
+```bash
+node "{baseDir}/scripts/export-promptfoo.mjs" --profile examples/public-agent-profile.yaml --case-file examples/public-agent-cases.json --prompt-file examples/public-agent-system-prompt.txt --provider openai:chat:gpt-4.1-mini --out promptfooconfig.yaml
+npx promptfoo@latest eval -c promptfooconfig.yaml
+```
+
+For local Ollama:
+
+```bash
+node "{baseDir}/scripts/export-promptfoo.mjs" --provider ollama:chat:qwen3:8b --out promptfooconfig.yaml
+npx promptfoo@latest eval -c promptfooconfig.yaml
+```
+
+## Legacy quick start (local GGUF, no Docker needed)
 
 ```bash
 pip install llama-cpp-python
@@ -32,7 +59,7 @@ export ALIGNHARNESS_GGUF_PATH=~/models/phi-3-mini-4k-instruct-q4.gguf
 python3 "{baseDir}/scripts/run-alignharness-local.py" --intent "concise technical explanations"
 ```
 
-## Quick start (llama.cpp server)
+## Legacy quick start (llama.cpp server)
 
 ```bash
 # Terminal 1 - start the server
@@ -44,12 +71,11 @@ ALIGNHARNESS_PROVIDER=llamacpp node "{baseDir}/scripts/run-alignharness.mjs" --i
 
 ## Workflow
 
-1. Confirm the benchmark intent in a short phrase such as `warm and friendly email replies` or `concise technical explanations for non-engineers`.
-2. For profile runs, start with `run-profile.mjs --validate-profile`; for model runs, use `--smoke-test` when provider connectivity is uncertain.
-3. If the user supplied a custom system prompt, pass it with `--prompt` for short prompts or `--prompt-file` for multiline prompts.
-4. Run the benchmark using one of the commands above.
-5. Summarize the result with the score breakdown, verdict, main failure modes, and improved prompt if one was generated.
-6. For serious profile comparisons, prefer `--judge-provider` / `--judge-model`, `--repeat N`, and `--save-report`.
+1. Identify the preference profile, seeded case file, and system prompt to test.
+2. Export a Promptfoo config with `export-promptfoo.mjs`.
+3. Run `promptfoo eval` with the user's provider of choice.
+4. Summarize pass/fail patterns by preference id and note brittle rubric edges.
+5. Use `run-profile.mjs` only for judge-based A/B prompt comparison, and prefer a separate strong judge.
 
 ## Commands
 
@@ -71,7 +97,13 @@ Node runner with llamacpp server:
 ALIGNHARNESS_PROVIDER=llamacpp node "{baseDir}/scripts/run-alignharness.mjs" --intent "warm emails" --json
 ```
 
-Full profile with a separate judge and saved report:
+Promptfoo config export:
+
+```bash
+node "{baseDir}/scripts/export-promptfoo.mjs" --profile examples/literature-backed-user-preferences.yaml --case-file examples/literature-backed-user-cases.json --prompt-file examples/complex-use-case-system-prompt.txt --provider openai:chat:gpt-4.1-mini --out promptfooconfig.yaml
+```
+
+Optional full profile with a separate judge and saved report:
 
 ```bash
 node "{baseDir}/scripts/run-profile.mjs" --cases 3 --repeat 3 --judge-provider openai --judge-model gpt-4.1-mini --save-report --improve
@@ -124,7 +156,8 @@ ALIGNHARNESS_PROVIDER=llamacpp ALIGNHARNESS_LLAMACPP_URL=http://127.0.0.1:11434/
 - For the local path, `ALIGNHARNESS_GGUF_PATH` must point to a valid GGUF file. Good options: Phi-3-mini Q4, Llama-3.2-3B Q4_K_M, Mistral-7B Q4_K_M.
 - For the llamacpp server path, `llama-server` must be running before calling the Node runner.
 - For hosted OpenAI-compatible endpoints through `llamacpp`, set `ALIGNHARNESS_LLAMACPP_API_KEY` if the endpoint requires a bearer token. For native hosted providers, set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`.
-- Prefer a separate judge provider/model for serious profile runs so one model is not generating cases, answering, and judging itself.
+- Prefer Promptfoo export for CI/regression testing. It avoids judge JSON failures and works better with small local models.
+- Prefer a separate judge provider/model for optional A/B profile runs so one model is not generating cases, answering, and judging itself.
 - Use `--repeat N` when comparing close prompts; report mean/stdev instead of trusting a tiny single run.
 - Use `--improve` after profile runs to analyze losses and generate a revised system prompt; rerun the benchmark against that revised prompt before treating it as better.
 - Use `compare-models.mjs` for model-version comparisons; rank primarily by candidate rubric score, not only A/B win rate, because A/B mode was originally designed for prompt comparisons.

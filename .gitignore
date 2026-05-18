@@ -6,6 +6,8 @@ logs/
 tools/
 downloads/
 reports/
+.promptfoo/
+promptfoo-output.*
 tmp-codex-skills/
 __pycache__/
 *.pyc

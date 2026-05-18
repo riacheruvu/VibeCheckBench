@@ -1,6 +1,6 @@
 # AlignHarness
 
-AlignHarness is a personal AI benchmark: it tests whether an assistant or agent setup actually behaves the way you want under realistic pressure.
+AlignHarness is a lightweight preference-profile layer for testing whether an assistant or agent setup behaves the way you want under realistic pressure.
 
 Instead of asking only "is this model capable?", AlignHarness asks: "does this setup honor *my* preferences when the prompt is subtle, messy, or socially awkward?"
 
@@ -13,7 +13,7 @@ Current focus areas in `preferences.yaml`:
 
 ## Why this exists
 
-System prompts, memory files, and personality settings are easy to write but hard to verify. AlignHarness turns those preferences into generated test cases, compares a default assistant against your custom setup, scores the outputs with a behavioral rubric, and reports where the setup failed.
+System prompts, memory files, and personality settings are easy to write but hard to verify. AlignHarness turns preferences into profiles, seeded cases, and deterministic eval configs that can run locally through Promptfoo. The older judge-based runner is still included for optional A/B prompt comparison, but it is not the main path.
 
 ## Related ideas
 
@@ -24,25 +24,68 @@ The narrow goal is practical: make it easy to turn your own interaction preferen
 ## Architecture
 
 ```text
-preferences.yaml / intent
+preferences.yaml + cases.json + system-prompt.txt
         |
         v
-skills/alignharness/scripts/
-  run-profile.mjs      # full behavioral profile benchmark
-  run-alignharness.mjs      # single-intent benchmark
-  run-alignharness-local.py # direct GGUF runner via llama-cpp-python
+AlignHarness exporter
         |
         v
-provider backend
-  llama.cpp server / OpenAI / Anthropic / OpenAI-compatible API
+promptfooconfig.yaml
         |
         v
-report: win rate, rubric scores, losses, improvement hints
+promptfoo eval
+        |
+        v
+deterministic regression results
 ```
 
-OpenClaw support is included through Docker. The sandbox runs the benchmark scripts, while inference can stay outside the sandbox on your Windows host or in an optional `llama-server` sidecar.
+This keeps the project small: AlignHarness owns the preference schema and examples; Promptfoo owns execution, providers, UI, reports, and CI. The custom judge runner remains available under `skills/alignharness/scripts/` for experiments that need A/B semantic comparison.
 
-## Quick start: llama.cpp server on Windows host
+## Quick start: Promptfoo regression suite
+
+Generate a Promptfoo config from the public-safe example profile:
+
+```powershell
+node skills/alignharness/scripts/export-promptfoo.mjs `
+  --profile examples/public-agent-profile.yaml `
+  --case-file examples/public-agent-cases.json `
+  --prompt-file examples/public-agent-system-prompt.txt `
+  --provider openai:chat:gpt-4.1-mini `
+  --out promptfooconfig.yaml
+```
+
+Run it:
+
+```powershell
+npx promptfoo@latest eval -c promptfooconfig.yaml
+```
+
+An exported example is checked in at `examples/promptfooconfig.example.yaml`.
+
+For local models, point Promptfoo at your local provider instead of changing the profile:
+
+```powershell
+node skills/alignharness/scripts/export-promptfoo.mjs `
+  --provider ollama:chat:qwen3:8b `
+  --out promptfooconfig.yaml
+```
+
+Promptfoo's JavaScript assertions are deterministic: they score the model output with code. The model output itself can still vary unless you use temperature `0`, a stable model build, and a fixed local backend.
+
+## Optional: judge-based A/B runner
+
+Use the custom runner when you specifically want to compare a default prompt against a custom prompt and have a judge decide which response better matches the profile.
+
+```text
+case
+ -> default prompt output
+ -> custom prompt output
+ -> judge model scores A vs B
+```
+
+This is useful with a strong separate judge. It is brittle with tiny local models that struggle to return valid JSON.
+
+## llama.cpp server on Windows host
 
 1. Copy the environment file:
 
@@ -135,7 +178,24 @@ ALIGNHARNESS_MODEL_FILE=your-model.gguf
 
 ## Main commands
 
-Single preference / intent:
+Export a Promptfoo regression suite:
+
+```bash
+node skills/alignharness/scripts/export-promptfoo.mjs \
+  --profile examples/literature-backed-user-preferences.yaml \
+  --case-file examples/literature-backed-user-cases.json \
+  --prompt-file examples/complex-use-case-system-prompt.txt \
+  --provider openai:chat:gpt-4.1-mini \
+  --out promptfooconfig.yaml
+```
+
+Run the suite:
+
+```bash
+npx promptfoo@latest eval -c promptfooconfig.yaml
+```
+
+Legacy single preference / intent:
 
 ```bash
 node skills/alignharness/scripts/run-alignharness.mjs --intent "warm but direct emails" --cases 5
@@ -150,7 +210,7 @@ node skills/alignharness/scripts/run-alignharness.mjs \
   --cases 5
 ```
 
-Full behavioral profile:
+Legacy full behavioral profile:
 
 ```bash
 node skills/alignharness/scripts/run-profile.mjs --profile preferences.yaml --prompt-file prompt.txt --cases 3
@@ -368,8 +428,10 @@ Use $alignharness to run my full preference profile with 3 cases and save a repo
 
 ## Known limitations
 
-- A single local model acting as generator, responder, and judge can create circular evaluation bias. For higher-quality runs, use a stronger or separate judge model.
-- Small local models may struggle to produce valid JSON. The runners include fallback JSON extraction, but very weak models can still fail.
+- Deterministic rubrics are intentionally simple. They are good for regression tests and CI, but they can miss semantic nuance or reward keywordy answers.
+- Promptfoo scoring is deterministic; model outputs are deterministic only if the provider/backend is configured that way.
+- A single local model acting as generator, responder, and judge can create circular evaluation bias in the legacy A/B runner. For higher-quality A/B runs, use a stronger or separate judge model.
+- Small local models may struggle to produce valid JSON in the legacy judge runner. The runner includes fallback JSON extraction, but very weak models can still fail.
 - Win rate excludes ties, but small case counts are noisy. Use `--repeat N` for mean/stdev, and treat smoke tests as debugging, not final evidence.
 - `--improve` proposes a revised prompt from observed losses; rerun the benchmark against that prompt before trusting the revision.
 - `workspaceAccess=none` is intentional for OpenClaw safety; keep GGUF files on the host or in the dedicated Docker model mount, not inside the sandbox workspace.

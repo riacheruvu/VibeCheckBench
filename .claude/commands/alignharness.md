@@ -1,8 +1,28 @@
-# /alignharness - Run a ALIGNHARNESS benchmark or preference profile
+# /alignharness - Export or run an AlignHarness preference suite
 
 ## Modes
 
-### Single intent
+### Promptfoo export (preferred)
+
+```text
+/alignharness export --profile examples/public-agent-profile.yaml --case-file examples/public-agent-cases.json --prompt-file examples/public-agent-system-prompt.txt --provider openai:chat:gpt-4.1-mini --out promptfooconfig.yaml
+```
+
+Run:
+
+```bash
+node skills/alignharness/scripts/export-promptfoo.mjs --profile "$PROFILE" --case-file "$CASE_FILE" --prompt-file "$PROMPT_FILE" --provider "$PROVIDER" --out "$OUT"
+```
+
+Then suggest:
+
+```bash
+npx promptfoo@latest eval -c "$OUT"
+```
+
+Report the generated config path, provider id, number of tests, and remind the user that JavaScript scoring is deterministic but model outputs depend on provider settings.
+
+### Legacy single intent
 
 ```text
 /alignharness "warm and friendly email replies"
@@ -18,7 +38,7 @@ node skills/alignharness/scripts/run-alignharness.mjs --intent "$INTENT" $FLAGS
 
 Report the score breakdown, win rate excluding ties, verdict, weakness analysis, and improved prompt suggestion when available.
 
-### Full profile
+### Legacy full profile
 
 ```text
 /alignharness profile
@@ -46,7 +66,7 @@ Then run:
 node skills/alignharness/scripts/run-profile.mjs --profile preferences.yaml $FLAGS
 ```
 
-Report aggregate weighted win rate, per-preference win rate, rubric score A vs B, loss reasons, strongest/weakest preference, repeat mean/stdev when present, and saved report path when present.
+Report aggregate weighted win rate, per-preference win rate, rubric score A vs B, loss reasons, strongest/weakest preference, repeat mean/stdev when present, and saved report path when present. Explain that this path depends on a judge model.
 
 ### Validate
 
@@ -111,17 +131,21 @@ Report candidate rubric score first, then A/B aggregate win rate. Explain that r
 | `--smoke-test` | Check provider/judge connectivity before a run |
 | `--improve` | Analyze profile losses and generate an improved system prompt |
 | `--models a,b,c` | Candidate models for `compare-models.mjs` |
+| `--out path` | Promptfoo config output path for `export-promptfoo.mjs` |
+| `--threshold N` | JavaScript assertion pass threshold for Promptfoo export |
 
 ## Provider notes
 
 - `ALIGNHARNESS_PROVIDER=llamacpp`: use `ALIGNHARNESS_LLAMACPP_URL`, default `localhost:8080`, and optional `ALIGNHARNESS_LLAMACPP_API_KEY`.
 - `OPENAI_API_KEY`: enables native OpenAI.
 - `ANTHROPIC_API_KEY`: enables native Anthropic.
-- For serious profile runs, prefer a separate judge through `ALIGNHARNESS_JUDGE_PROVIDER` / `ALIGNHARNESS_JUDGE_MODEL` or the matching flags.
+- Prefer Promptfoo export for local/offline regression and CI.
+- For legacy A/B profile runs, prefer a separate judge through `ALIGNHARNESS_JUDGE_PROVIDER` / `ALIGNHARNESS_JUDGE_MODEL` or the matching flags.
 
 ## Follow-up behavior
 
-- If Config B loses or ties, offer to revise the tested prompt.
+- Default to Promptfoo export unless the user asks for A/B comparison, judge scoring, or prompt improvement.
+- If Config B loses or ties in the legacy runner, offer to revise the tested prompt.
 - If one preference is clearly weakest, target the next prompt iteration there.
 - If the run is tiny or high variance, suggest `--repeat 3` before drawing strong conclusions.
 - When `--improve` is used, show the weakness analysis and improved prompt, then suggest rerunning the profile against the improved prompt.

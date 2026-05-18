@@ -1,18 +1,28 @@
 # AlignHarness - Claude Code Integration
 
-This file teaches Claude Code how to work with ALIGNHARNESS.
+This file teaches Claude Code how to work with AlignHarness.
 
 ## What this repo does
 
-ALIGNHARNESS benchmarks whether an AI setup actually matches a user preference.
-It generates test prompts, runs them against a default assistant and a custom
-system prompt, scores each pair with an impartial judge, and suggests an
-improved prompt when the custom setup loses.
+AlignHarness turns user preference profiles into runnable AI regression suites.
+
+The preferred path is:
+
+```text
+preferences.yaml + cases.json + system-prompt.txt
+  -> export-promptfoo.mjs
+  -> promptfooconfig.yaml
+  -> promptfoo eval
+```
+
+The judge-based runner is still available for optional A/B prompt comparison,
+but it should not be treated as the default architecture.
 
 ## Project layout
 
 ```
 skills/alignharness/scripts/
+  export-promptfoo.mjs        # Preferred: Promptfoo config exporter
   run-alignharness.mjs          # Node runner (llamacpp / openai / anthropic)
   run-profile.mjs          # Full preference profile runner
   run-alignharness-local.py     # Python runner (llama-cpp-python, GGUF direct)
@@ -28,7 +38,19 @@ docker-compose.yml         # OpenClaw + optional llama-server profile
 
 ## Running a benchmark
 
-### With llama.cpp server on host (default)
+### Preferred Promptfoo export
+
+```bash
+node skills/alignharness/scripts/export-promptfoo.mjs \
+  --profile examples/public-agent-profile.yaml \
+  --case-file examples/public-agent-cases.json \
+  --prompt-file examples/public-agent-system-prompt.txt \
+  --provider openai:chat:gpt-4.1-mini \
+  --out promptfooconfig.yaml
+npx promptfoo@latest eval -c promptfooconfig.yaml
+```
+
+### Legacy llama.cpp server on host
 
 ```bash
 # Make sure llama-server is running on port 8080, then:

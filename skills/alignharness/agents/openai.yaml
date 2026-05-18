@@ -1,8 +1,8 @@
 interface:
   display_name: "AlignHarness"
-  short_description: "Benchmark agent behavior against preferences"
+  short_description: "Export preference profiles to Promptfoo evals"
   brand_color: "#2563EB"
-  default_prompt: "Use $alignharness to benchmark whether this assistant setup matches my preferences."
+  default_prompt: "Use $alignharness to export my preference profile as a Promptfoo regression suite."
 
 policy:
   allow_implicit_invocation: true
