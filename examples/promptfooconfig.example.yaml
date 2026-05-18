@@ -29,6 +29,7 @@ tests:
         metric: "mechanism_first_framing"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (/uncertain|assumption|verify|evidence|source|not prove|not enough|cannot confirm/.test(text)) score += 0.35;
@@ -46,6 +47,7 @@ tests:
         metric: "mechanism_first_framing"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (/uncertain|assumption|verify|evidence|source|not prove|not enough|cannot confirm/.test(text)) score += 0.35;
@@ -63,6 +65,7 @@ tests:
         metric: "operational_reality_check"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (/i would not|not yet|i disagree|that does not follow|weak|risk|overclaim|too speculative/.test(text)) score += 0.4;
@@ -80,6 +83,7 @@ tests:
         metric: "operational_reality_check"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (/i would not|not yet|i disagree|that does not follow|weak|risk|overclaim|too speculative/.test(text)) score += 0.4;
@@ -97,6 +101,7 @@ tests:
         metric: "concise_high_signal"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (!/great question|great idea|absolutely|exciting|breakthrough|you're right/.test(text)) score += 0.35;
@@ -114,6 +119,7 @@ tests:
         metric: "concise_high_signal"
         threshold: 0.5
         value: |
+          if (/user request:/i.test(output) || /you are a concise, high-integrity/i.test(output)) return 0;
           const text = output.toLowerCase();
           let score = 0;
           if (!/great question|great idea|absolutely|exciting|breakthrough|you're right/.test(text)) score += 0.35;
