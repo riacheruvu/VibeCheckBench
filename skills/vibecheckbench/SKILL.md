@@ -53,13 +53,13 @@ node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider opena
 After a Promptfoo run with JSON output, summarize it as a personal skill chart:
 
 ```bash
-node "{baseDir}/scripts/chart-results.mjs" --input reports/results.json --out reports/skill-chart.md
+node "{baseDir}/scripts/chart-results.mjs" --input reports/results.json --out reports/skill-chart.html
 ```
 
 For an offline demo, use the bundled example Promptfoo-shaped results:
 
 ```bash
-node "{baseDir}/scripts/chart-results.mjs" --input "{baseDir}/examples/promptfoo-results.models.example.json" --out reports/skill-chart.md
+node "{baseDir}/scripts/chart-results.mjs" --input "{baseDir}/examples/promptfoo-results.models.example.json" --out reports/skill-chart.html
 ```
 
 ## Validation

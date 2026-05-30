@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibeCheckBench Skill Chart</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5c6672;
+      --line: #d8dde4;
+      --panel: #f6f8fa;
+      --strong: #1f7a4d;
+      --solid: #2f6db5;
+      --fragile: #a26000;
+      --weak: #b3261e;
+      --bg: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 32px auto 48px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 28px;
+      line-height: 1.1;
+      margin: 0 0 8px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 28px 0 12px;
+      letter-spacing: 0;
+    }
+    p { color: var(--muted); max-width: 780px; margin: 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      table-layout: fixed;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+      overflow-wrap: anywhere;
+    }
+    th { background: var(--panel); font-weight: 650; }
+    tr:last-child td, tr:last-child th { border-bottom: 0; }
+    .bar {
+      display: inline-block;
+      width: min(220px, 70%);
+      height: 10px;
+      background: #e8ecf1;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .bar span { display: block; height: 100%; }
+    .strong { background-color: #e7f4ec; color: var(--strong); }
+    .solid { background-color: #e7f0fb; color: var(--solid); }
+    .fragile { background-color: #fff3df; color: var(--fragile); }
+    .weak { background-color: #fdebea; color: var(--weak); }
+    .bar .strong { background: var(--strong); }
+    .bar .solid { background: var(--solid); }
+    .bar .fragile { background: var(--fragile); }
+    .bar .weak { background: var(--weak); }
+    .read {
+      display: inline-block;
+      min-width: 72px;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-weight: 650;
+      text-align: center;
+    }
+    .matrix th:first-child { width: 280px; }
+    .cell b { display: block; font-size: 16px; }
+    .cell span { color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); background: #fafbfc; }
+    ul { color: var(--muted); padding-left: 20px; }
+    @media (max-width: 720px) {
+      main { width: min(100vw - 20px, 1120px); margin-top: 20px; }
+      table { font-size: 12px; }
+      th, td { padding: 8px; }
+      .matrix th:first-child { width: 180px; }
+      .bar { width: 100%; margin: 0 0 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>VibeCheckBench Skill Chart</h1>
+      <p>This is a personal-fit chart, not a general model leaderboard. Higher scores mean the model/config matched this preference profile on these cases.</p>
+    </header>
+
+    <section>
+      <h2>Overall</h2>
+      <table>
+        <thead>
+          <tr><th>Model/config</th><th>Pass rate</th><th>Mean score</th><th>Read</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>careful-hosted-model</td>
+          <td>100%</td>
+          <td>0.82</td>
+          <td>
+            <div class="bar" aria-label="careful-hosted-model mean score 0.82">
+              <span class="solid" style="width:83%"></span>
+            </div>
+            <span class="read solid">solid</span>
+          </td>
+        </tr>
+        <tr>
+          <td>concise-local-model</td>
+          <td>50%</td>
+          <td>0.63</td>
+          <td>
+            <div class="bar" aria-label="concise-local-model mean score 0.63">
+              <span class="fragile" style="width:63%"></span>
+            </div>
+            <span class="read fragile">fragile</span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>By Preference</h2>
+      <table class="matrix">
+        <thead>
+          <tr><th>Preference</th><th scope="col">careful-hosted-model</th><th scope="col">concise-local-model</th></tr>
+        </thead>
+        <tbody><tr><th scope="row">calibrated_factuality_and_sourceability</th><td class="cell strong"><b>0.90</b><span>100% pass</span></td><td class="cell weak"><b>0.35</b><span>0% pass</span></td></tr><tr><th scope="row">concise_length_control</th><td class="cell solid"><b>0.75</b><span>100% pass</span></td><td class="cell strong"><b>0.90</b><span>100% pass</span></td></tr><tr><th scope="row">social_sycophancy_resistance</th><td class="cell solid"><b>0.80</b><span>100% pass</span></td><td class="cell weak"><b>0.45</b><span>0% pass</span></td></tr><tr><th scope="row">verifiable_instruction_following</th><td class="cell strong"><b>0.85</b><span>100% pass</span></td><td class="cell solid"><b>0.80</b><span>100% pass</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Notes</h2>
+      <ul>
+        <li>Review failing outputs manually before drawing conclusions.</li>
+        <li>Re-run with held-out cases before treating a config as improved.</li>
+        <li>Keep private profiles local unless the provider's data policy is acceptable for that content.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

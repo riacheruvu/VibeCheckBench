@@ -106,15 +106,17 @@ npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/result
 
 `npx promptfoo@latest` may download Promptfoo. In no-network or privacy-sensitive environments, use an already installed Promptfoo binary instead, or install it only after reviewing where the cases will be sent.
 
-Then generate a compact skill chart:
+Then generate a compact skill chart. Use `.html` for a ready-to-open visualization, or `.md` for a plain markdown table:
 
 ```powershell
 node skills/vibecheckbench/scripts/chart-results.mjs `
   --input reports/results.json `
-  --out reports/skill-chart.md
+  --out reports/skill-chart.html
 ```
 
 Use any Promptfoo provider id that works in your environment. Only use hosted providers with public-safe profiles and cases unless the provider's data policy is acceptable for the content.
+
+A generated example visualization is checked in at `examples/skill-chart.example.html`.
 
 ## Optional: judge-based A/B runner
 
