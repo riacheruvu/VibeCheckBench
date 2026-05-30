@@ -15,10 +15,10 @@ prompts:
     {{user_prompt}}
 
 providers:
-  - id: "nvidia:meta/llama-3.3-70b-instruct"
+  - id: "file://examples/promptfoo-aligned-provider.mjs"
     config:
       temperature: 0
-  - id: "nvidia:nvidia/llama-3.1-nemotron-70b-instruct"
+  - id: "echo"
     config:
       temperature: 0
 

@@ -84,19 +84,35 @@ node skills/vibecheckbench/scripts/export-promptfoo.mjs `
 
 Promptfoo's JavaScript assertions are deterministic: they score the model output with code. The model output itself can still vary unless you use temperature `0`, a stable model build, and a fixed local backend.
 
-For NVIDIA NIM-hosted models, set `NVIDIA_API_KEY` and use Promptfoo's `nvidia:` provider. NVIDIA's hosted NIM endpoint is OpenAI-compatible, and Promptfoo maps `nvidia:<model-id>` to it.
+## Compare models or configs
+
+VibeCheckBench is not trying to be a public leaderboard. The more useful shape is a personal skill chart: run the same preference suite against several models, prompts, or agent configs, then compare where each one fits your workflow.
+
+Generate a multi-provider config by repeating `--provider`:
 
 ```powershell
-$env:NVIDIA_API_KEY="<your-nvidia-api-key>"
 node skills/vibecheckbench/scripts/export-promptfoo.mjs `
   --example complex `
-  --provider nvidia:meta/llama-3.3-70b-instruct `
-  --provider nvidia:nvidia/llama-3.1-nemotron-70b-instruct `
-  --out promptfooconfig.nvidia.yaml
-npx promptfoo@latest eval -c promptfooconfig.nvidia.yaml
+  --provider openai:chat:gpt-4.1-mini `
+  --provider ollama:chat:qwen3:8b `
+  --out promptfooconfig.models.yaml
 ```
 
-Only use hosted providers with public-safe profiles and cases. Free or preview endpoints may log prompts, have changing limits, or change available models over time.
+Run Promptfoo with JSON output:
+
+```powershell
+npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
+```
+
+Then generate a compact skill chart:
+
+```powershell
+node skills/vibecheckbench/scripts/chart-results.mjs `
+  --input reports/results.json `
+  --out reports/skill-chart.md
+```
+
+Use any Promptfoo provider id that works in your environment. Only use hosted providers with public-safe profiles and cases unless the provider's data policy is acceptable for the content.
 
 ## Optional: judge-based A/B runner
 

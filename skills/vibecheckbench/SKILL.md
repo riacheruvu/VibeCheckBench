@@ -44,10 +44,16 @@ npx promptfoo@latest eval -c promptfooconfig.yaml
 
 Use a local provider id such as `ollama:chat:qwen3:8b` when the user wants offline testing.
 
-Use NVIDIA NIM-hosted models with Promptfoo's `nvidia:` provider when `NVIDIA_API_KEY` is configured, for example:
+Repeat `--provider` to compare several models or configs in one suite:
 
 ```bash
-node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider nvidia:meta/llama-3.3-70b-instruct --provider nvidia:nvidia/llama-3.1-nemotron-70b-instruct --out promptfooconfig.nvidia.yaml
+node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider openai:chat:gpt-4.1-mini --provider ollama:chat:qwen3:8b --out promptfooconfig.models.yaml
+```
+
+After a Promptfoo run with JSON output, summarize it as a personal skill chart:
+
+```bash
+node "{baseDir}/scripts/chart-results.mjs" --input reports/results.json --out reports/skill-chart.md
 ```
 
 ## Validation
@@ -56,6 +62,7 @@ Before presenting a generated suite as ready:
 
 ```bash
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
+node --check "{baseDir}/scripts/chart-results.mjs"
 node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider echo --out promptfooconfig.yaml
 ```
 
