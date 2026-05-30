@@ -1,94 +1,75 @@
 # VibeCheckBench
 
-VibeCheckBench is a small prototype for testing whether an AI setup actually behaves the way you want.
+VibeCheckBench is a small prototype for turning "this AI feels off" into repeatable checks.
 
-Most of us have personal, hard-to-articulate preferences for how AI should behave. Sometimes the answer is technically fine, but it still feels wrong: too verbose, too agreeable, too generic, too hesitant, or not direct enough.
+Most AI benchmarks ask which model is best overall. VibeCheckBench asks a more personal question:
 
-Usually that friction turns into manual workarounds: rewriting the output, switching models, copy-pasting into another tool, or tweaking prompts by feel.
+> Does this model, prompt, memory file, or agent setup fit the way someone actually wants to work?
 
-VibeCheckBench tries to turn that friction into a repeatable test: capture preferences, run examples, score the behavior, and use failures to improve the setup.
+It focuses on everyday interaction failures that standard benchmarks often miss: answers that are too long, too agreeable, too vague, too hesitant, too confident, or too poor at following exact instructions.
 
-Current focus areas in `preferences.yaml`:
+The goal is practical and user-owned: define preferences, run public-safe cases, compare setups, and visualize where each one fits or misses.
 
-- factuality - catches false premises and uncertainty
-- pushback - disagrees when the user is wrong
-- initiative - volunteers useful context or related work when it matters
-- anti-sycophancy - avoids empty validation and unearned praise
+## What it helps test
 
-## Why this exists
+The bundled complex example checks whether an AI setup:
 
-System prompts, memory files, and personality settings are easy to write but hard to verify. Under the hood, VibeCheckBench turns preferences into profiles, seeded cases, and deterministic eval configs that can run locally through Promptfoo. The older judge-based runner is still included for optional A/B prompt comparison, but it is not the main path.
+- **Knows what it knows** - avoids making things up, says what is uncertain, and names what to check
+- **Stays concise** - respects length and formatting constraints
+- **Gives honest pushback** - does not flatter or agree just to be nice
+- **Follows instructions** - handles exact schemas, required words, and checkable directions
+- **Stays helpful but safe** - avoids blanket refusals while keeping risky requests bounded
+- **Helps the user decide** - shows tradeoffs and next steps without taking over the decision
 
-## Related ideas
-
-VibeCheckBench is a small prototype, not a claim of firstness. It sits near work on personalized LLM evaluation, behavioral preference rubrics, model-as-judge workflows, sycophancy tests, instruction-following evals, and agent configuration testing.
-
-The narrow goal is practical: make it easy to turn your own interaction preferences into repeatable smoke tests for prompts, memory files, model choices, and agent configs.
-
-## Architecture
+## How it works
 
 ```text
-preferences.yaml + cases.json + system-prompt.txt
+preference profile + test cases + system prompt
         |
         v
 VibeCheckBench exporter
         |
         v
-promptfooconfig.yaml
+Promptfoo config
         |
         v
-promptfoo eval
+Promptfoo model/config run
         |
         v
-deterministic regression results
+VibeCheckBench skill chart
 ```
 
-This keeps the project small: VibeCheckBench owns the preference schema and examples; Promptfoo owns execution, providers, UI, reports, and CI. The custom judge runner remains available under `skills/vibecheckbench/scripts/` for experiments that need A/B semantic comparison.
+VibeCheckBench owns the preference examples, generated rubrics, and visualization. Promptfoo owns provider execution, reports, UI, and CI.
 
-## Quick start: Promptfoo regression suite
+The older judge-based A/B runner is still included for experiments that need semantic default-vs-custom comparisons, but the default path is the Promptfoo regression suite.
 
-Generate a Promptfoo config from the public-safe example profile:
+## Quickstart: offline demo
+
+This path does not install packages, call models, or send prompts anywhere. It uses checked-in demo results so you can see the workflow and chart.
 
 ```powershell
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --provider openai:chat:gpt-4.1-mini `
-  --out promptfooconfig.yaml
+node skills/vibecheckbench/scripts/chart-results.mjs `
+  --input examples/promptfoo-results.models.example.json `
+  --out reports/skill-chart.html
 ```
 
-Use the richer complex example when you want to exercise the parts this prototype is really about: sycophancy resistance, concise answers, exact instruction following, factual calibration, non-refusal, and decision fit.
+Open:
 
-```powershell
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --example complex `
-  --provider openai:chat:gpt-4.1-mini `
-  --out promptfooconfig.complex.yaml
+```text
+reports/skill-chart.html
 ```
 
-Run it:
+There is also a checked-in example:
 
-```powershell
-npx promptfoo@latest eval -c promptfooconfig.yaml
+```text
+examples/skill-chart.example.html
 ```
 
-This may download Promptfoo if it is not already installed or cached.
+The checked-in chart uses demo data, so labels like `careful-hosted-model` and `concise-local-model` are examples. After a real Promptfoo run, the chart reflects the providers/configs in your results file.
 
-An exported example is checked in at `examples/promptfooconfig.example.yaml`.
+## Compare real models or configs
 
-For local models, point Promptfoo at your local provider instead of changing the profile:
-
-```powershell
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --provider ollama:chat:qwen3:8b `
-  --out promptfooconfig.yaml
-```
-
-Promptfoo's JavaScript assertions are deterministic: they score the model output with code. The model output itself can still vary unless you use temperature `0`, a stable model build, and a fixed local backend.
-
-## Compare models or configs
-
-VibeCheckBench is not trying to be a public leaderboard. The more useful shape is a personal skill chart: run the same preference suite against several models, prompts, or agent configs, then compare where each one fits your workflow.
-
-Generate a multi-provider config by repeating `--provider`:
+Generate a Promptfoo config from the richer public-safe example profile:
 
 ```powershell
 node skills/vibecheckbench/scripts/export-promptfoo.mjs `
@@ -98,15 +79,13 @@ node skills/vibecheckbench/scripts/export-promptfoo.mjs `
   --out promptfooconfig.models.yaml
 ```
 
-Run Promptfoo with JSON output:
+Run Promptfoo and save JSON results:
 
 ```powershell
 npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
 ```
 
-`npx promptfoo@latest` may download Promptfoo. In no-network or privacy-sensitive environments, use an already installed Promptfoo binary instead, or install it only after reviewing where the cases will be sent.
-
-Then generate a compact skill chart. Use `.html` for a ready-to-open visualization, or `.md` for a plain markdown table:
+Then generate the visual comparison:
 
 ```powershell
 node skills/vibecheckbench/scripts/chart-results.mjs `
@@ -114,15 +93,107 @@ node skills/vibecheckbench/scripts/chart-results.mjs `
   --out reports/skill-chart.html
 ```
 
-Use any Promptfoo provider id that works in your environment. Only use hosted providers with public-safe profiles and cases unless the provider's data policy is acceptable for the content.
+`npx promptfoo@latest` may download Promptfoo. In no-network or privacy-sensitive environments, use an already installed Promptfoo binary instead, or install it only after reviewing where the cases will be sent.
 
-A generated example visualization is checked in at `examples/skill-chart.example.html`.
+Use any Promptfoo provider id that works in your environment: OpenAI, Anthropic, Ollama, llama.cpp, vLLM, LM Studio, hosted OpenAI-compatible routers, or file-based mock providers.
 
-The checked-in chart uses bundled demo results, so its model/config labels are examples. After a real Promptfoo run, the chart will reflect the providers or configs from `reports/results.json`.
+## Customize the profile
 
-## Optional: judge-based A/B runner
+Start from the public examples:
 
-Use the custom runner when you specifically want to compare a default prompt against a custom prompt and have a judge decide which response better matches the profile.
+```text
+examples/complex-agent-profile.yaml
+examples/complex-agent-cases.json
+examples/complex-agent-system-prompt.txt
+```
+
+Then export your custom suite:
+
+```powershell
+node skills/vibecheckbench/scripts/export-promptfoo.mjs `
+  --profile path\to\your-profile.yaml `
+  --case-file path\to\your-cases.json `
+  --prompt-file path\to\your-system-prompt.txt `
+  --provider ollama:chat:qwen3:8b `
+  --out promptfooconfig.yaml
+```
+
+Keep the first cases small and public-safe. The best cases are not generic trivia; they are moments where the AI answer could be technically fine but still wrong for the user's workflow.
+
+## What the chart means
+
+- **Checks passed**: the share of test prompts where a setup met the preference threshold
+- **Fit score**: the average score from 0 to 1 for that preference profile
+- **Plain read**: a quick label: strong, solid, fragile, or needs work
+- **Fit shape**: a radar-style view of where each setup is strong or thin across preference areas
+
+This is a personal-fit chart, not a model leaderboard. A setup can be excellent for one person's workflow and poor for another's. Always inspect failing outputs before making a decision.
+
+## Privacy
+
+- The offline demo uses checked-in example data only.
+- Local providers such as Ollama or llama.cpp can keep prompts on your machine.
+- Hosted providers may log prompts and outputs depending on their terms.
+- Do not send personal profiles, private notes, proprietary prompts, or sensitive work data to providers unless their data policy is acceptable for that content.
+
+## Local and OSS model notes
+
+Ollama example:
+
+```powershell
+ollama pull qwen3:8b
+node skills/vibecheckbench/scripts/export-promptfoo.mjs `
+  --example complex `
+  --provider ollama:chat:qwen3:8b `
+  --out promptfooconfig.ollama.yaml
+```
+
+llama.cpp server example:
+
+```powershell
+llama-server.exe -m C:\models\your-model.gguf --host 127.0.0.1 --port 8080
+```
+
+Then use a Promptfoo provider id or the legacy runner's OpenAI-compatible settings.
+
+See:
+
+```text
+examples/oss-model-presets.json
+```
+
+Treat those as editable starter presets, not a fixed leaderboard.
+
+## Codex and Claude Code helpers
+
+This repo includes a Codex-compatible skill:
+
+```text
+skills/vibecheckbench/
+```
+
+Install it locally:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills/vibecheckbench/scripts/install-codex-skill.ps1
+```
+
+Then in Codex:
+
+```text
+Use $vibecheckbench to export the complex example and generate a skill chart.
+```
+
+Claude Code files are also included:
+
+```text
+CLAUDE.md
+.claude/commands/vibecheckbench.md
+```
+
+## Legacy judge-based runner
+
+Use this path when you specifically want a judge model to compare a default answer against a custom prompt/config answer.
 
 ```text
 case
@@ -131,355 +202,68 @@ case
  -> judge model scores A vs B
 ```
 
-This is useful with a strong separate judge. It is brittle with tiny local models that struggle to return valid JSON.
-
-## llama.cpp server on Windows host
-
-1. Copy the environment file:
+Example:
 
 ```powershell
-copy .env.example .env
+node skills/vibecheckbench/scripts/run-profile.mjs `
+  --profile examples/public-agent-profile.yaml `
+  --case-file examples/public-agent-cases.json `
+  --prompt-file examples/public-agent-system-prompt.txt `
+  --cases 2 `
+  --repeat 3 `
+  --save-report
 ```
 
-2. Start `llama-server` on your host machine:
+For higher-quality A/B runs, use a stronger or separate judge model:
 
 ```powershell
-llama-server.exe -m C:\models\your-model.gguf --host 0.0.0.0 --port 8080
-```
-
-3. Run a quick single-intent benchmark:
-
-```powershell
-$env:VIBECHECKBENCH_PROVIDER="llamacpp"
-$env:VIBECHECKBENCH_LLAMACPP_URL="http://localhost:8080"
-node skills/vibecheckbench/scripts/run-vibecheckbench.mjs --intent "push back when my premise is wrong" --cases 3
-```
-
-4. Run the full preference profile:
-
-```powershell
-node skills/vibecheckbench/scripts/run-profile.mjs --cases 2
-```
-
-Use small case counts first. Local models can be slow, especially when the same model generates, answers, and judges.
-
-## Quick start: hosted or remote models
-
-### OpenAI
-
-```powershell
-$env:OPENAI_API_KEY="<your-openai-api-key>"
-node skills/vibecheckbench/scripts/run-profile.mjs --cases 3
-```
-
-### Anthropic
-
-```powershell
-$env:ANTHROPIC_API_KEY="<your-anthropic-api-key>"
-node skills/vibecheckbench/scripts/run-profile.mjs --cases 3
-```
-
-### OpenAI-compatible APIs
-
-For Together, Fireworks, Groq, Ollama, vLLM, or a remote llama.cpp server:
-
-```powershell
-$env:VIBECHECKBENCH_PROVIDER="llamacpp"
-$env:VIBECHECKBENCH_LLAMACPP_URL="https://your-endpoint.example/v1"
-$env:VIBECHECKBENCH_LLAMACPP_API_KEY="your-token-if-needed"
-node skills/vibecheckbench/scripts/run-profile.mjs --cases 3
-```
-
-## Docker / OpenClaw workflow
-
-Build the images:
-
-```powershell
-docker compose build
-```
-
-Start OpenClaw with inference on your Windows host:
-
-```powershell
-docker compose up -d openclaw-gateway
-```
-
-In this mode, the sandbox calls:
-
-```text
-http://host.docker.internal:8080
-```
-
-Start OpenClaw plus a Dockerized llama.cpp sidecar instead:
-
-```powershell
-docker compose --profile llama up -d
-```
-
-When using the sidecar, set this in `.env`:
-
-```text
-VIBECHECKBENCH_LLAMACPP_URL=http://llama-server:8080
-VIBECHECKBENCH_MODELS_DIR=./models
-VIBECHECKBENCH_MODEL_FILE=your-model.gguf
-```
-
-## Main commands
-
-Export a Promptfoo regression suite:
-
-```bash
-node skills/vibecheckbench/scripts/export-promptfoo.mjs \
-  --profile examples/literature-backed-user-preferences.yaml \
-  --case-file examples/literature-backed-user-cases.json \
-  --prompt-file examples/complex-use-case-system-prompt.txt \
-  --provider openai:chat:gpt-4.1-mini \
-  --out promptfooconfig.yaml
-```
-
-Run the suite:
-
-```bash
-npx promptfoo@latest eval -c promptfooconfig.yaml
-```
-
-Legacy single preference / intent:
-
-```bash
-node skills/vibecheckbench/scripts/run-vibecheckbench.mjs --intent "warm but direct emails" --cases 5
-```
-
-Test a custom system prompt:
-
-```bash
-node skills/vibecheckbench/scripts/run-vibecheckbench.mjs \
-  --intent "patient coding help" \
-  --prompt-file prompt.txt \
-  --cases 5
-```
-
-Legacy full behavioral profile:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs --profile preferences.yaml --prompt-file prompt.txt --cases 3
-```
-
-Validate the profile parser without calling a model:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs --validate-profile
-```
-
-Check provider connectivity before a real run:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs --smoke-test
-```
-
-Use a separate judge and repeat noisy runs:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs \
-  --provider llamacpp \
-  --judge-provider openai \
-  --judge-model gpt-4.1-mini \
-  --cases 3 \
-  --repeat 3 \
-  --save-report \
+node skills/vibecheckbench/scripts/run-profile.mjs `
+  --provider llamacpp `
+  --judge-provider openai `
+  --judge-model gpt-4.1-mini `
+  --cases 3 `
+  --repeat 3 `
+  --save-report `
   --improve
 ```
 
-Compare OpenAI model versions:
+Tiny local models often fail JSON judging, so the Promptfoo path is usually better for local/offline regression tests.
 
-```bash
-node skills/vibecheckbench/scripts/compare-models.mjs \
-  --provider openai \
-  --models "gpt-5.5,gpt-5.4,gpt-5.4-mini" \
-  --profile examples/public-agent-profile.yaml \
-  --prompt-file examples/public-agent-system-prompt.txt \
-  --cases 3 \
-  --repeat 3 \
-  --judge-provider openai \
-  --judge-model gpt-5.5
-```
+## Development checks
 
-For model-version comparisons, read candidate rubric score first. A/B aggregate win rate is still shown, but it was originally designed for prompt comparisons.
-
-Run a seeded public-safe interaction profile:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs \
-  --profile examples/public-agent-profile.yaml \
-  --case-file examples/public-agent-cases.json \
-  --prompt-file examples/public-agent-system-prompt.txt \
-  --cases 2 \
-  --repeat 3 \
-  --save-report
-```
-
-Use `--case-file` when you have real user-research examples and want stable tests instead of generated cases.
-
-Compare prompt/memory/skill config candidates:
+Run these before sharing changes:
 
 ```powershell
-node skills/vibecheckbench/scripts/compare-configs.mjs `
-  --config-dir examples/config-candidates `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --cases 2 `
-  --repeat 3
+node --check skills/vibecheckbench/scripts/export-promptfoo.mjs
+node --check skills/vibecheckbench/scripts/chart-results.mjs
+
+node skills/vibecheckbench/scripts/export-promptfoo.mjs `
+  --example complex `
+  --provider "file://examples/promptfoo-aligned-provider.mjs" `
+  --provider echo `
+  --out examples/promptfooconfig.models.example.yaml
+
+node skills/vibecheckbench/scripts/chart-results.mjs `
+  --input examples/promptfoo-results.models.example.json `
+  --out examples/skill-chart.example.html
 ```
 
-Iteratively improve a config:
+Optional real-model test:
 
 ```powershell
-node skills/vibecheckbench/scripts/optimize-config.mjs `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --prompt-file examples/config-candidates/generic-supportive.txt `
-  --iterations 3 `
-  --cases 2 `
-  --repeat 2
-```
-
-For best results, use a stronger or separate judge model. Very small local models may fail the JSON judge step.
-
-Run the literature-backed complex user preference demo:
-
-```powershell
-node skills/vibecheckbench/scripts/run-profile.mjs `
-  --profile examples/literature-backed-user-preferences.yaml `
-  --case-file examples/literature-backed-user-cases.json `
-  --prompt-file examples/complex-use-case-system-prompt.txt `
-  --cases 2 `
-  --repeat 3 `
-  --judge-provider openai `
-  --judge-model gpt-5.5 `
-  --save-report
-```
-
-This profile targets common documented preference failures: social sycophancy, length/format control, verifiable instruction following, calibrated factuality, over-refusal, and user agency in decisions.
-
-## OSS model testing
-
-VibeCheckBench can test OSS/open-weight models through any OpenAI-compatible local or hosted router.
-
-Ollama example:
-
-```powershell
-ollama pull qwen3:8b
-ollama pull llama3.1:8b
-$env:VIBECHECKBENCH_PROVIDER="llamacpp"
-$env:VIBECHECKBENCH_LLAMACPP_URL="http://127.0.0.1:11434/v1"
-node skills/vibecheckbench/scripts/compare-models.mjs `
-  --provider llamacpp `
-  --models "qwen3:8b,llama3.1:8b" `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --prompt-file examples/public-agent-system-prompt.txt `
-  --cases 2 `
-  --repeat 3
-```
-
-llama.cpp example:
-
-```powershell
-llama-server -m C:\models\your-model.gguf --host 127.0.0.1 --port 8080
-$env:VIBECHECKBENCH_PROVIDER="llamacpp"
-$env:VIBECHECKBENCH_LLAMACPP_URL="http://127.0.0.1:8080"
-node skills/vibecheckbench/scripts/run-profile.mjs `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --prompt-file examples/public-agent-system-prompt.txt `
-  --cases 2 `
-  --repeat 3
-```
-
-See `examples/oss-model-presets.json` for starter model/router presets. Treat those as editable examples, not a fixed leaderboard.
-
-This repo also includes helper scripts for the local llama.cpp setup:
-
-```powershell
-# Start official Qwen3-0.6B GGUF through llama.cpp.
-# First run downloads the model from Hugging Face.
-powershell -ExecutionPolicy Bypass -File scripts/start-llamacpp-qwen.ps1
-
-# Run a tiny VibeCheckBench smoke profile against the local server.
-powershell -ExecutionPolicy Bypass -File scripts/test-llamacpp-vibecheckbench.ps1
-
-# Stop the local server.
-powershell -ExecutionPolicy Bypass -File scripts/stop-llamacpp.ps1
-```
-
-Privacy note:
-
-- Local llama.cpp keeps prompts on your machine after the model is downloaded.
-- The helper binds to `127.0.0.1`, not the LAN.
-- Use `VIBECHECKBENCH_NO_THINK=1` with Qwen3-style reasoning models if you want final answers instead of reasoning-only responses.
-- Do not send personal profiles, private notes, or business-sensitive prompts to OpenRouter free routes; their free endpoint warns that prompts and outputs may be logged and used for provider improvement.
-
-JSON output:
-
-```bash
-node skills/vibecheckbench/scripts/run-profile.mjs --json > report.json
-```
-
-Direct GGUF path without a server:
-
-```bash
-pip install llama-cpp-python
-python3 skills/vibecheckbench/scripts/run-vibecheckbench-local.py \
-  --model /path/to/model.gguf \
-  --intent "concise technical explanations"
-```
-
-## Claude Code integration
-
-This repo includes:
-
-- `CLAUDE.md` - project instructions for Claude Code
-- `.claude/commands/vibecheckbench.md` - slash-command workflow
-
-In Claude Code, use:
-
-```text
-/vibecheckbench "warm and friendly email replies"
-/vibecheckbench profile --cases 3
-/vibecheckbench profile --prompt-file prompt.txt
-```
-
-## Codex skill prototype
-
-This repo also includes a Codex-compatible skill at:
-
-```text
-skills/vibecheckbench/
-```
-
-It contains:
-
-- `SKILL.md` - Codex/OpenClaw skill instructions
-- `agents/openai.yaml` - Codex UI metadata
-- `scripts/install-codex-skill.ps1` - Windows installer that copies the skill to `~/.codex/skills/vibecheckbench`
-
-Install it locally:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File skills/vibecheckbench/scripts/install-codex-skill.ps1
-```
-
-Then invoke it in Codex as:
-
-```text
-Use $vibecheckbench to run my full preference profile with 3 cases and save a report.
+npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
+node skills/vibecheckbench/scripts/chart-results.mjs --input reports/results.json --out reports/skill-chart.html
 ```
 
 ## Known limitations
 
-- Deterministic rubrics are intentionally simple. They are good for regression tests and CI, but they can miss semantic nuance or reward keywordy answers.
-- Promptfoo scoring is deterministic; model outputs are deterministic only if the provider/backend is configured that way.
-- A single local model acting as generator, responder, and judge can create circular evaluation bias in the legacy A/B runner. For higher-quality A/B runs, use a stronger or separate judge model.
-- Small local models may struggle to produce valid JSON in the legacy judge runner. The runner includes fallback JSON extraction, but very weak models can still fail.
-- Win rate excludes ties, but small case counts are noisy. Use `--repeat N` for mean/stdev, and treat smoke tests as debugging, not final evidence.
-- `--improve` proposes a revised prompt from observed losses; rerun the benchmark against that prompt before trusting the revision.
-- `workspaceAccess=none` is intentional for OpenClaw safety; keep GGUF files on the host or in the dedicated Docker model mount, not inside the sandbox workspace.
+- Deterministic rubrics are useful for regression checks, but they can miss semantic nuance or reward keywordy answers.
+- Model outputs may still vary unless provider settings and model builds are stable.
+- Small case counts are noisy. Use repeats or held-out cases before trusting an apparent improvement.
+- The checked-in skill chart is demo data, not fresh model evidence.
+- The legacy A/B runner can suffer from circular evaluation bias if the same weak model generates, answers, and judges.
+- `--improve` proposes prompt changes from observed losses; rerun the evaluation before trusting those revisions.
+
+## License
+
+MIT

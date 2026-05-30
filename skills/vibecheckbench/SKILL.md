@@ -30,7 +30,7 @@ Promptfoo handles execution, UI, reports, and CI. VibeCheckBench owns the prefer
 node "{baseDir}/scripts/export-promptfoo.mjs" --provider openai:chat:gpt-4.1-mini --out promptfooconfig.yaml
 ```
 
-Use `--example complex` when the user wants the richer, public-safe preference suite for sycophancy resistance, concise answers, instruction following, factual calibration, non-refusal, and decision fit.
+Use `--example complex` when the user wants the richer, public-safe preference suite for sycophancy resistance, concise answers, instruction following, "knows what it knows" behavior, non-refusal, and decision fit.
 
 3. Tell the user to run:
 
