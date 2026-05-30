@@ -56,6 +56,12 @@ After a Promptfoo run with JSON output, summarize it as a personal skill chart:
 node "{baseDir}/scripts/chart-results.mjs" --input reports/results.json --out reports/skill-chart.md
 ```
 
+For an offline demo, use the bundled example Promptfoo-shaped results:
+
+```bash
+node "{baseDir}/scripts/chart-results.mjs" --input "{baseDir}/examples/promptfoo-results.models.example.json" --out reports/skill-chart.md
+```
+
 ## Validation
 
 Before presenting a generated suite as ready:
@@ -64,6 +70,7 @@ Before presenting a generated suite as ready:
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
 node --check "{baseDir}/scripts/chart-results.mjs"
 node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider echo --out promptfooconfig.yaml
+node "{baseDir}/scripts/chart-results.mjs" --input "{baseDir}/examples/promptfoo-results.models.example.json" --stdout
 ```
 
 The `echo` provider is a plumbing test only. Echoed prompts should fail the generated JavaScript rubrics because non-answers are guarded against.
