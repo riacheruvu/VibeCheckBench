@@ -104,6 +104,8 @@ Run Promptfoo with JSON output:
 npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
 ```
 
+`npx promptfoo@latest` may download Promptfoo. In no-network or privacy-sensitive environments, use an already installed Promptfoo binary instead, or install it only after reviewing where the cases will be sent.
+
 Then generate a compact skill chart:
 
 ```powershell

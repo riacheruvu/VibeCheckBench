@@ -82,7 +82,7 @@ function parseArgs(argv) {
     profilePath: DEFAULT_PROFILE_PATH,
     caseFile: DEFAULT_CASE_FILE,
     promptFile: DEFAULT_PROMPT_FILE,
-    providers: ["openai:chat:gpt-4.1-mini"],
+    providers: [],
     out: "promptfooconfig.yaml",
     stdout: false,
     threshold: 0.5,
@@ -110,9 +110,6 @@ function parseArgs(argv) {
     if (arg === "--prompt-file") { args.promptFile = argv[++i]; continue; }
     if (arg === "--provider") {
       const provider = argv[++i];
-      if (args.providers.length === 1 && args.providers[0] === "openai:chat:gpt-4.1-mini") {
-        args.providers = [];
-      }
       args.providers.push(provider);
       continue;
     }
@@ -123,6 +120,7 @@ function parseArgs(argv) {
   }
 
   if (!Number.isFinite(args.threshold)) args.threshold = 0.5;
+  if (args.providers.length === 0) args.providers = ["openai:chat:gpt-4.1-mini"];
   return args;
 }
 
@@ -335,7 +333,7 @@ function main() {
   fs.writeFileSync(outPath, config, "utf8");
   console.log(`Wrote Promptfoo config: ${outPath}`);
   console.log(`Tests: ${testCount}`);
-  console.log("Run: npx promptfoo@latest eval -c " + path.basename(outPath));
+  console.log("Run: npx promptfoo@latest eval -c " + outPath);
 }
 
 try {
