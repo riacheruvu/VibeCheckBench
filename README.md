@@ -51,11 +51,17 @@ Generate a Promptfoo config from the public-safe example profile:
 
 ```powershell
 node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --prompt-file examples/public-agent-system-prompt.txt `
   --provider openai:chat:gpt-4.1-mini `
   --out promptfooconfig.yaml
+```
+
+Use the richer complex example when you want to exercise the parts this prototype is really about: sycophancy resistance, concise answers, exact instruction following, factual calibration, non-refusal, and decision fit.
+
+```powershell
+node skills/vibecheckbench/scripts/export-promptfoo.mjs `
+  --example complex `
+  --provider openai:chat:gpt-4.1-mini `
+  --out promptfooconfig.complex.yaml
 ```
 
 Run it:
@@ -77,6 +83,20 @@ node skills/vibecheckbench/scripts/export-promptfoo.mjs `
 ```
 
 Promptfoo's JavaScript assertions are deterministic: they score the model output with code. The model output itself can still vary unless you use temperature `0`, a stable model build, and a fixed local backend.
+
+For NVIDIA NIM-hosted models, set `NVIDIA_API_KEY` and use Promptfoo's `nvidia:` provider. NVIDIA's hosted NIM endpoint is OpenAI-compatible, and Promptfoo maps `nvidia:<model-id>` to it.
+
+```powershell
+$env:NVIDIA_API_KEY="<your-nvidia-api-key>"
+node skills/vibecheckbench/scripts/export-promptfoo.mjs `
+  --example complex `
+  --provider nvidia:meta/llama-3.3-70b-instruct `
+  --provider nvidia:nvidia/llama-3.1-nemotron-70b-instruct `
+  --out promptfooconfig.nvidia.yaml
+npx promptfoo@latest eval -c promptfooconfig.nvidia.yaml
+```
+
+Only use hosted providers with public-safe profiles and cases. Free or preview endpoints may log prompts, have changing limits, or change available models over time.
 
 ## Optional: judge-based A/B runner
 

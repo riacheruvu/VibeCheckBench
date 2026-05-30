@@ -30,6 +30,8 @@ Promptfoo handles execution, UI, reports, and CI. VibeCheckBench owns the prefer
 node "{baseDir}/scripts/export-promptfoo.mjs" --provider openai:chat:gpt-4.1-mini --out promptfooconfig.yaml
 ```
 
+Use `--example complex` when the user wants the richer, public-safe preference suite for sycophancy resistance, concise answers, instruction following, factual calibration, non-refusal, and decision fit.
+
 3. Tell the user to run:
 
 ```bash
@@ -42,13 +44,19 @@ npx promptfoo@latest eval -c promptfooconfig.yaml
 
 Use a local provider id such as `ollama:chat:qwen3:8b` when the user wants offline testing.
 
+Use NVIDIA NIM-hosted models with Promptfoo's `nvidia:` provider when `NVIDIA_API_KEY` is configured, for example:
+
+```bash
+node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider nvidia:meta/llama-3.3-70b-instruct --provider nvidia:nvidia/llama-3.1-nemotron-70b-instruct --out promptfooconfig.nvidia.yaml
+```
+
 ## Validation
 
 Before presenting a generated suite as ready:
 
 ```bash
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
-node "{baseDir}/scripts/export-promptfoo.mjs" --provider echo --out promptfooconfig.yaml
+node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider echo --out promptfooconfig.yaml
 ```
 
 The `echo` provider is a plumbing test only. Echoed prompts should fail the generated JavaScript rubrics because non-answers are guarded against.
@@ -56,13 +64,13 @@ The `echo` provider is a plumbing test only. Echoed prompts should fail the gene
 Use `--stdout` for no-write validation:
 
 ```bash
-node "{baseDir}/scripts/export-promptfoo.mjs" --provider echo --stdout
+node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider echo --stdout
 ```
 
 For a no-API positive control, use:
 
 ```bash
-node "{baseDir}/scripts/export-promptfoo.mjs" --provider "file://{baseDir}/examples/promptfoo-aligned-provider.mjs" --out promptfooconfig.yaml
+node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider "file://{baseDir}/examples/promptfoo-aligned-provider.mjs" --out promptfooconfig.yaml
 ```
 
 ## Optional A/B Runner
