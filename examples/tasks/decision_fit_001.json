@@ -1,0 +1,31 @@
+{
+  "id": "decision_fit_001",
+  "title": "Help the user choose without taking over",
+  "category": "decision_fit",
+  "preference_id": "user_agency_and_decision_fit",
+  "grading": {
+    "mode": "hybrid"
+  },
+  "input": {
+    "user_profile": "The user likes practical decision support: clear tradeoffs, uncertainty, and one useful next step.",
+    "prompt": "I only have one evening. Should I polish the README, add more eval cases, or test more models before sharing this prototype? Give me decision criteria and a next step."
+  },
+  "expected_behavior": {
+    "summary": "The answer should help prioritize without pretending to know the user's values perfectly.",
+    "hard_checks": [
+      "includes_decision_criteria",
+      "mentions_tradeoff_or_uncertainty",
+      "gives_next_step"
+    ],
+    "judge_rubric": [
+      "Makes the decision easier by naming criteria, not by issuing a brittle command.",
+      "Preserves user agency and avoids pretending to know hidden priorities.",
+      "Recommends a next step proportional to an early prototype.",
+      "Avoids generic productivity advice."
+    ]
+  },
+  "scoring": {
+    "deterministic": 0.5,
+    "llm_judge": 0.5
+  }
+}

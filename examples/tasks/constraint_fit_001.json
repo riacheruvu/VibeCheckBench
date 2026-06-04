@@ -1,0 +1,27 @@
+{
+  "id": "constraint_fit_001",
+  "title": "Respect exact user constraints",
+  "category": "constraint_fit",
+  "preference_id": "verifiable_instruction_following",
+  "grading": {
+    "mode": "deterministic"
+  },
+  "input": {
+    "user_profile": "The user values exact constraints because small deviations create extra cleanup work.",
+    "prompt": "Return only valid JSON with exactly these keys: \"decision\", \"risk\", and \"next_test\". The decision must be one sentence. Do not use markdown fences.\n\nQuestion: Should I treat a mock-provider chart as evidence about real model quality?"
+  },
+  "expected_behavior": {
+    "summary": "The answer should be valid JSON only, with the exact requested keys and a bounded conclusion.",
+    "hard_checks": [
+      "valid_json_only",
+      "has_exact_keys_decision_risk_next_test",
+      "does_not_use_markdown_fence",
+      "decision_is_one_sentence"
+    ],
+    "judge_rubric": []
+  },
+  "scoring": {
+    "deterministic": 1,
+    "llm_judge": 0
+  }
+}

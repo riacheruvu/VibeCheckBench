@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 function usage() {
   console.log(`VibeCheckBench skill chart
@@ -32,21 +33,28 @@ function parseArgs(argv) {
   return args;
 }
 
-function readRows(inputPath) {
+export function readInput(inputPath) {
   const text = fs.readFileSync(inputPath, "utf8").trim();
-  if (!text) return [];
+  if (!text) return { rows: [], metadata: {} };
 
   if (inputPath.endsWith(".jsonl")) {
-    return text.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+    return {
+      rows: text.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line)),
+      metadata: { evaluation_mode: "jsonl results" },
+    };
   }
 
   const payload = JSON.parse(text);
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.results?.results)) return payload.results.results;
-  if (Array.isArray(payload.results?.outputs)) return payload.results.outputs;
-  if (Array.isArray(payload.outputs)) return payload.outputs;
-  if (Array.isArray(payload.results)) return payload.results;
-  return [];
+  const metadata = payload.metadata || {};
+  if (payload.version === "vibecheckbench-captured-answers-v1") {
+    metadata.evaluation_mode = metadata.evaluation_mode || "captured model answers";
+  }
+  if (Array.isArray(payload)) return { rows: payload, metadata };
+  if (Array.isArray(payload.results?.results)) return { rows: payload.results.results, metadata };
+  if (Array.isArray(payload.results?.outputs)) return { rows: payload.results.outputs, metadata };
+  if (Array.isArray(payload.outputs)) return { rows: payload.outputs, metadata };
+  if (Array.isArray(payload.results)) return { rows: payload.results, metadata };
+  return { rows: [], metadata };
 }
 
 function providerOf(row) {
@@ -99,36 +107,36 @@ function bar(score) {
 
 const METRIC_INFO = {
   calibrated_factuality_and_sourceability: {
-    label: "Knows what it knows",
-    description: "Does not make things up; says what is uncertain and what to check.",
+    label: "Doesn't overclaim",
+    description: "Keeps trust calibrated: separates facts, assumptions, and what still needs checking.",
   },
   concise_length_control: {
-    label: "Concise answers",
-    description: "Keeps answers short and follows requested length or format limits.",
+    label: "Keeps it high-signal",
+    description: "Respects the user's time by staying concise without dropping needed nuance.",
   },
   context_sensitive_non_refusal: {
-    label: "Helpful but safe",
-    description: "Does not shut down harmless requests, but still keeps risky ones bounded.",
+    label: "Helps without overstepping",
+    description: "Gives bounded help for allowed requests instead of over-refusing or oversharing.",
   },
   mechanism_first_framing: {
-    label: "Explains how things work",
-    description: "Uses evidence and constraints instead of vague intent-like stories.",
+    label: "Explains mechanisms",
+    description: "Grounds answers in evidence, constraints, and causal reasoning instead of vague stories.",
   },
   operational_reality_check: {
-    label: "Reality checks",
-    description: "Points out practical limits, risks, and what could go wrong.",
+    label: "Keeps it realistic",
+    description: "Names practical limits, risks, and what would break in the real world.",
   },
   social_sycophancy_resistance: {
-    label: "Honest pushback",
-    description: "Does not flatter you or agree just to be nice.",
+    label: "Pushes back kindly",
+    description: "Supports the user without flattering, rubber-stamping, or validating weak claims.",
   },
   user_agency_and_decision_fit: {
-    label: "Helps you decide",
-    description: "Shows tradeoffs and next steps without taking over the decision.",
+    label: "Helps me choose",
+    description: "Shows tradeoffs, uncertainty, and next steps while leaving the decision with the user.",
   },
   verifiable_instruction_following: {
-    label: "Instruction following",
-    description: "Follows exact formats, required words, and other checkable directions.",
+    label: "Respects my asks",
+    description: "Keeps the specific constraints the user gave: format, length, exclusions, and required details.",
   },
 };
 
@@ -139,7 +147,7 @@ function metricInfo(metric) {
   };
 }
 
-function summarize(rows) {
+export function summarize(rows) {
   const byProvider = new Map();
   for (const row of rows) {
     const provider = providerOf(row);
@@ -157,19 +165,25 @@ function average(items, selector) {
   return items.reduce((sum, item) => sum + selector(item), 0) / items.length;
 }
 
-function render(summary) {
+export function render(summary, metadata = {}) {
   const providers = [...summary.keys()].sort();
   const metrics = [...new Set(providers.flatMap(provider => [...summary.get(provider).keys()]))].sort();
   const lines = [
     "# VibeCheckBench Skill Chart",
     "",
     "This is a personal-fit chart, not a general model leaderboard. Higher scores mean the model/config matched this preference profile on these cases.",
+  ];
+
+  const provenance = provenanceLine(metadata);
+  if (provenance) lines.push("", provenance);
+
+  lines.push(
     "",
     "## Overall",
     "",
     "| Model/config | Pass rate | Mean score | Read |",
     "|---|---:|---:|---|",
-  ];
+  );
 
   for (const provider of providers) {
     const all = [...summary.get(provider).values()].flat();
@@ -293,7 +307,14 @@ function renderRadar({ providers, metrics, summary }) {
     </section>`;
 }
 
-function renderHtml(summary) {
+function provenanceLine(metadata) {
+  const parts = [];
+  if (metadata.evaluation_mode || metadata.mode) parts.push(`Mode: ${metadata.evaluation_mode || metadata.mode}`);
+  if (metadata.source) parts.push(`Source: ${metadata.source}`);
+  return parts.join(" | ");
+}
+
+export function renderHtml(summary, metadata = {}) {
   const providers = [...summary.keys()].sort();
   const metrics = [...new Set(providers.flatMap(provider => [...summary.get(provider).keys()]))].sort();
   const overall = providers.map(provider => {
@@ -352,6 +373,7 @@ function renderHtml(summary) {
 
   const providerHeaders = providers.map(provider => `<th scope="col">${htmlEscape(provider)}</th>`).join("");
   const radar = renderRadar({ providers, metrics, summary });
+  const provenance = provenanceLine(metadata);
 
   return `<!doctype html>
 <html lang="en">
@@ -406,6 +428,12 @@ function renderHtml(summary) {
     }
     .lede {
       font-size: 15px;
+    }
+    .provenance {
+      margin-top: 8px;
+      color: #39424e;
+      font-size: 13px;
+      font-weight: 650;
     }
     .explainer {
       display: grid;
@@ -546,6 +574,7 @@ function renderHtml(summary) {
     <header>
       <h1>Which AI setup fits this workflow?</h1>
       <p class="lede">This chart compares model or agent configurations against a personal preference profile. It is not a general leaderboard; it shows where each setup is more or less likely to behave the way this user wants.</p>
+      ${provenance ? `<p class="provenance">${htmlEscape(provenance)}</p>` : ""}
       <div class="explainer" aria-label="How to read this chart">
         <div><b>Checks passed</b><span>The share of test prompts where the setup met the preference threshold.</span></div>
         <div><b>Fit score</b><span>The average score from 0 to 1. Higher means closer to the expected behavior.</span></div>
@@ -602,27 +631,34 @@ function renderHtml(summary) {
 `.replace(/[ \t]+$/gm, "");
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const rows = readRows(path.resolve(process.cwd(), args.input));
-  if (!rows.length) throw new Error(`No Promptfoo result rows found in ${args.input}.`);
-  const outPath = path.resolve(process.cwd(), args.out);
+export function chartResultsFile({ input, out = "reports/skill-chart.md", stdout = false }) {
+  const { rows, metadata } = readInput(path.resolve(process.cwd(), input));
+  if (!rows.length) throw new Error(`No Promptfoo result rows found in ${input}.`);
+  const outPath = path.resolve(process.cwd(), out);
   const summary = summarize(rows);
-  const output = outPath.endsWith(".html") ? renderHtml(summary) : render(summary);
+  const output = outPath.endsWith(".html") ? renderHtml(summary, metadata) : render(summary, metadata);
 
-  if (args.stdout) {
+  if (stdout) {
     process.stdout.write(output);
-    return;
+    return { output, outPath: "" };
   }
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, output, "utf8");
   console.log(`Wrote skill chart: ${outPath}`);
+  return { output, outPath };
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`Skill chart error: ${error.message}`);
-  process.exit(1);
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  chartResultsFile({ input: args.input, out: args.out, stdout: args.stdout });
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`Skill chart error: ${error.message}`);
+    process.exit(1);
+  }
 }

@@ -1,11 +1,24 @@
 {
+  "ollama_local_tiny": {
+    "provider": "ollama",
+    "baseUrl": "http://127.0.0.1:11434",
+    "models": [
+      "gemma3:270m",
+      "qwen3:0.6b",
+      "smollm2:360m",
+      "llama3.2:1b"
+    ],
+    "notes": "Fast laptop-friendly smoke tests for preference-fit plumbing. These are useful for checking the harness, but tiny models may fail nuanced user-preference behavior."
+  },
   "ollama_local_small": {
-    "provider": "llamacpp",
+    "provider": "ollama",
     "baseUrl": "http://127.0.0.1:11434/v1",
     "models": [
+      "gemma3:1b",
+      "smollm2:1.7b",
+      "llama3.2:3b",
       "qwen3:8b",
-      "llama3.1:8b",
-      "gemma3:12b"
+      "llama3.1:8b"
     ],
     "notes": "Good first local sweep when running Ollama on a laptop/desktop. Replace model tags with `ollama list` output."
   },

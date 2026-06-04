@@ -8,6 +8,13 @@ metadata: {"openclaw":{"requires":{"bins":["node","python3"]}},"codex":{"require
 
 Use this skill when the user wants to test whether an AI setup "feels right" for their preferences, build a regression suite from preference YAML, or compare prompt/model/config behavior.
 
+## Two Evaluation Modes
+
+- Preference Fit Eval: score the model's actual answers against the user's preference profile. This is the core VibeCheckBench use case.
+- Operator Eval: check whether an agent can run VibeCheckBench correctly. This is useful for validating Codex/Claude workflows, but do not present it as evidence that the model's own answers fit the user.
+
+When the user asks whether different models match their preferences, prefer Preference Fit Eval. When they ask whether the skill works in Codex or Claude, use Operator Eval.
+
 ## Default Path
 
 Prefer Promptfoo export for normal use:
@@ -20,6 +27,17 @@ preferences.yaml + cases.json + system-prompt.txt
 ```
 
 Promptfoo handles execution, UI, reports, and CI. VibeCheckBench owns the preference schema, examples, and rubric generation.
+
+For benchmark-design work, prefer the task-pack format in `examples/tasks`. It makes each case explicit: category, user profile, prompt, hard checks, judge rubric, and scoring mix.
+
+Validate and export task packs:
+
+```bash
+node "{baseDir}/scripts/validate-tasks.mjs" --tasks examples/tasks
+node "{baseDir}/scripts/export-task-pack-promptfoo.mjs" --tasks examples/tasks --provider ollama:chat:qwen3:0.6b --out promptfooconfig.tasks.yaml
+```
+
+Use `--include-judge --judge-provider <provider-id>` only when the user has approved any provider/API implications. LLM judges are useful for nuance but should be treated as fallible.
 
 ## Workflow
 
@@ -73,6 +91,97 @@ When using the bundled example results, tell the user the chart is demo data. It
 
 For demo requests, create the config and chart artifacts in the current workspace when possible, then report the paths. Do not ask the user to run commands unless the next step requires their provider credentials, local model setup, package installation, or network access.
 
+## Captured Model Answers
+
+Use this path when the user is comparing models selected inside Codex, Claude Code, or a chat UI and the model itself is not directly callable through Promptfoo.
+
+Ask the user to capture each model's answers into this JSON shape, or create the file yourself from pasted outputs:
+
+```json
+{
+  "results": [
+    {
+      "provider": "gpt-5.5-codex",
+      "preference_id": "social_sycophancy_resistance",
+      "user_prompt": "The prompt shown to the model",
+      "output": "The model's answer"
+    }
+  ]
+}
+```
+
+Then score and chart it:
+
+```bash
+node "{baseDir}/scripts/score-answers.mjs" --input captured-answers.json --out reports/results.captured.json
+node "{baseDir}/scripts/chart-results.mjs" --input reports/results.captured.json --out reports/skill-chart.captured.html
+```
+
+If the user is asking whether the benchmark is actually catching user-fit problems, or deterministic checks look too keyword-driven, run a judge pass over the captured answers:
+
+```bash
+node "{baseDir}/scripts/judge-captured-answers.mjs" --input reports/answers.ollama.json --tasks examples/tasks --judge-provider ollama:chat:qwen3:0.6b --out reports/results.ollama.judged.json
+node "{baseDir}/scripts/chart-results.mjs" --input reports/results.ollama.judged.json --out reports/skill-chart.ollama.judged.html
+```
+
+Explain that this is judging the model's answer behavior, not the agent's ability to run tools. Tiny local models are weak judges; use them for private plumbing and rough signal only. For serious claims, use a stronger separate judge or Promptfoo's judge-backed path after confirming provider privacy.
+
+Explain clearly that this scores the model's own answer behavior. It is different from scoring whether an agent successfully ran the VibeCheckBench tooling.
+
+If the user pastes raw answers in markdown/text form, do not ask them to manually build JSON. Save the paste to a markdown file using this structure, then run the ingester:
+
+~~~markdown
+## gpt-5.5-codex
+
+### social_sycophancy_resistance
+
+User prompt:
+
+```text
+...
+```
+
+Output:
+
+```text
+...
+```
+~~~
+
+Then run:
+
+```bash
+node "{baseDir}/scripts/ingest-captured-markdown.mjs" --input captured-answers.md --out reports/captured-answers.json
+node "{baseDir}/scripts/score-answers.mjs" --input reports/captured-answers.json --out reports/results.captured.json
+node "{baseDir}/scripts/chart-results.mjs" --input reports/results.captured.json --out reports/skill-chart.captured.html
+```
+
+For repeated model-picker comparisons, create a local capture session instead of making the user copy the whole structure each time:
+
+```bash
+node "{baseDir}/scripts/prepare-capture-session.mjs" --name codex-model-sweep --model "GPT 5.5 Codex" --model "Claude Sonnet" --limit 4
+```
+
+This creates `captures/<name>/subject-prompts.md`, `captures/<name>/answers.md`, and `captures/<name>/session.json`. The user can fill in `answers.md`, then the skill should ingest, score, and chart it. Treat `captures/` as local memory and avoid committing it.
+
+## Local/OSS Subject Runner
+
+When the user wants the tool to orchestrate local models and they do not have hosted API keys, use `run-local-subjects.mjs`. This avoids Promptfoo and supports Ollama, file-based mock providers, and echo.
+
+Smoke test with no model dependency:
+
+```bash
+node "{baseDir}/scripts/run-local-subjects.mjs" --provider "file://examples/promptfoo-aligned-provider.mjs" --provider echo --limit 1 --out reports/answers.local-smoke.json --scored-out reports/results.local-smoke.json --chart-out reports/skill-chart.local-smoke.html
+```
+
+Ollama example:
+
+```bash
+node "{baseDir}/scripts/run-local-subjects.mjs" --provider ollama:chat:qwen3:8b --provider ollama:chat:llama3.1:8b --limit 1 --out reports/answers.ollama.json --scored-out reports/results.ollama.json --chart-out reports/skill-chart.ollama.html
+```
+
+Before using Ollama, check whether `ollama` is installed and the requested models are present. Do not pull models unless the user approves the download. If Ollama is unavailable, offer the file/mock smoke test or captured-answer workflow.
+
 ## Validation
 
 Before presenting a generated suite as ready:
@@ -80,6 +189,14 @@ Before presenting a generated suite as ready:
 ```bash
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
 node --check "{baseDir}/scripts/chart-results.mjs"
+node --check "{baseDir}/scripts/score-answers.mjs"
+node --check "{baseDir}/scripts/run-local-subjects.mjs"
+node --check "{baseDir}/scripts/ingest-captured-markdown.mjs"
+node --check "{baseDir}/scripts/prepare-capture-session.mjs"
+node --check "{baseDir}/scripts/judge-captured-answers.mjs"
+node --check "{baseDir}/scripts/validate-tasks.mjs"
+node --check "{baseDir}/scripts/export-task-pack-promptfoo.mjs"
+node "{baseDir}/scripts/validate-tasks.mjs" --tasks examples/tasks
 node "{baseDir}/scripts/export-promptfoo.mjs" --example complex --provider echo --out promptfooconfig.yaml
 node "{baseDir}/scripts/chart-results.mjs" --input "{baseDir}/examples/promptfoo-results.models.example.json" --stdout
 ```

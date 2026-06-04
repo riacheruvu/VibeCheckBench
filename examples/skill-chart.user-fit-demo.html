@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibeCheckBench Skill Chart</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5c6672;
+      --line: #d8dde4;
+      --panel: #f6f8fa;
+      --soft: #fbfcfd;
+      --strong: #1f7a4d;
+      --solid: #2f6db5;
+      --fragile: #a26000;
+      --weak: #b3261e;
+      --bg: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 32px auto 48px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 28px;
+      line-height: 1.1;
+      margin: 0 0 8px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 28px 0 12px;
+      letter-spacing: 0;
+    }
+    p { color: var(--muted); max-width: 820px; margin: 0; }
+    .section-note {
+      margin: -4px 0 12px;
+      font-size: 13px;
+    }
+    .lede {
+      font-size: 15px;
+    }
+    .provenance {
+      margin-top: 8px;
+      color: #39424e;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .explainer {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 4px;
+    }
+    .explainer div {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .explainer b {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .explainer span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      table-layout: fixed;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+      overflow-wrap: anywhere;
+    }
+    th { background: var(--panel); font-weight: 650; }
+    tr:last-child td, tr:last-child th { border-bottom: 0; }
+    .bar {
+      display: inline-block;
+      width: min(220px, 70%);
+      height: 10px;
+      background: #e8ecf1;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .bar span { display: block; height: 100%; }
+    .strong { background-color: #e7f4ec; color: var(--strong); }
+    .solid { background-color: #e7f0fb; color: var(--solid); }
+    .fragile { background-color: #fff3df; color: var(--fragile); }
+    .weak { background-color: #fdebea; color: var(--weak); }
+    .bar .strong { background: var(--strong); }
+    .bar .solid { background: var(--solid); }
+    .bar .fragile { background: var(--fragile); }
+    .bar .weak { background: var(--weak); }
+    .read {
+      display: inline-block;
+      min-width: 72px;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-weight: 650;
+      text-align: center;
+    }
+    .matrix th:first-child { width: 320px; }
+    .matrix th span { display: block; }
+    .matrix th small {
+      display: block;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 3px;
+    }
+    .cell b { display: block; font-size: 16px; }
+    .cell span { color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); background: #fafbfc; }
+    .radar-wrap {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 360px;
+    }
+    .axis {
+      stroke: #252b33;
+      stroke-width: 2.2;
+      opacity: 0.82;
+    }
+    .ring {
+      fill: none;
+      stroke: #cbd2dc;
+      stroke-width: 1;
+    }
+    .fit-shape {
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+    .radar-label {
+      fill: var(--ink);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .legend i {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    ul { color: var(--muted); padding-left: 20px; }
+    @media (max-width: 720px) {
+      main { width: min(100vw - 20px, 1120px); margin-top: 20px; }
+      table { font-size: 12px; }
+      th, td { padding: 8px; }
+      .matrix th:first-child { width: 180px; }
+      .bar { width: 100%; margin: 0 0 6px; }
+      .explainer { grid-template-columns: 1fr; }
+      .radar-label { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Which AI setup fits this workflow?</h1>
+      <p class="lede">This chart compares model or agent configurations against a personal preference profile. It is not a general leaderboard; it shows where each setup is more or less likely to behave the way this user wants.</p>
+      <p class="provenance">Mode: mock preference-fit demo | Source: hand-authored public-safe example data for chart and social preview</p>
+      <div class="explainer" aria-label="How to read this chart">
+        <div><b>Checks passed</b><span>The share of test prompts where the setup met the preference threshold.</span></div>
+        <div><b>Fit score</b><span>The average score from 0 to 1. Higher means closer to the expected behavior.</span></div>
+        <div><b>Plain read</b><span>A quick label: strong, solid, fragile, or needs work. Always inspect failures before deciding.</span></div>
+      </div>
+    </header>
+
+    <section>
+      <h2>Quick Read</h2>
+      <table>
+        <thead>
+          <tr><th>Model/config</th><th>Best at</th><th>Watch out for</th><th>How to use this</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>Concise &amp; practical config</td>
+          <td>Pushes back kindly</td>
+          <td>Helps without overstepping</td>
+          <td>Good candidate for this profile, with targeted review.</td>
+        </tr>
+        <tr>
+          <td>Tiny local model baseline</td>
+          <td>Keeps it high-signal</td>
+          <td>Doesn't overclaim</td>
+          <td>Use carefully; inspect failures before relying on it.</td>
+        </tr>
+        <tr>
+          <td>Polished &amp; agreeable config</td>
+          <td>Helps without overstepping</td>
+          <td>Pushes back kindly</td>
+          <td>Use carefully; inspect failures before relying on it.</td>
+        </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Scores</h2>
+      <table>
+        <thead>
+          <tr><th>Model/config</th><th>Checks passed</th><th>Fit score</th><th>Plain read</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td>Concise &amp; practical config</td>
+          <td>100%</td>
+          <td>0.84</td>
+          <td>
+            <div class="bar" aria-label="Concise &amp; practical config mean score 0.84">
+              <span class="solid" style="width:84%"></span>
+            </div>
+            <span class="read solid">solid</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Tiny local model baseline</td>
+          <td>50%</td>
+          <td>0.51</td>
+          <td>
+            <div class="bar" aria-label="Tiny local model baseline mean score 0.51">
+              <span class="fragile" style="width:51%"></span>
+            </div>
+            <span class="read fragile">fragile</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Polished &amp; agreeable config</td>
+          <td>50%</td>
+          <td>0.50</td>
+          <td>
+            <div class="bar" aria-label="Polished &amp; agreeable config mean score 0.50">
+              <span class="fragile" style="width:50%"></span>
+            </div>
+            <span class="read fragile">fragile</span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </section>
+
+
+    <section>
+      <h2>Fit Shape</h2>
+      <p class="section-note">The shape shows where each setup is strong or thin across this user's preference areas. A wider shape means stronger fit on that preference; uneven shapes are useful because they show tradeoffs.</p>
+      <div class="radar-wrap">
+        <svg viewBox="0 0 760 520" role="img" aria-label="Radar chart comparing model fit across preference areas">
+          <polygon points="380.0,222.5 412.5,241.3 412.5,278.8 380.0,297.5 347.5,278.8 347.5,241.3" class="ring"></polygon><polygon points="380.0,185.0 445.0,222.5 445.0,297.5 380.0,335.0 315.0,297.5 315.0,222.5" class="ring"></polygon><polygon points="380.0,147.5 477.4,203.8 477.4,316.3 380.0,372.5 282.6,316.3 282.6,203.8" class="ring"></polygon><polygon points="380.0,110.0 509.9,185.0 509.9,335.0 380.0,410.0 250.1,335.0 250.1,185.0" class="ring"></polygon>
+
+          <line x1="380" y1="260" x2="380.0" y2="110.0" class="axis"></line>
+          <text x="380.0" y="48.0" text-anchor="middle" class="radar-label">Doesn't overclaim</text>
+          <line x1="380" y1="260" x2="509.9" y2="185.0" class="axis"></line>
+          <text x="563.6" y="154.0" text-anchor="start" class="radar-label">Keeps it high-signal</text>
+          <line x1="380" y1="260" x2="509.9" y2="335.0" class="axis"></line>
+          <text x="563.6" y="366.0" text-anchor="start" class="radar-label">Helps without overstepping</text>
+          <line x1="380" y1="260" x2="380.0" y2="410.0" class="axis"></line>
+          <text x="380.0" y="472.0" text-anchor="middle" class="radar-label">Pushes back kindly</text>
+          <line x1="380" y1="260" x2="250.1" y2="335.0" class="axis"></line>
+          <text x="196.4" y="366.0" text-anchor="end" class="radar-label">Helps me choose</text>
+          <line x1="380" y1="260" x2="250.1" y2="185.0" class="axis"></line>
+          <text x="196.4" y="154.0" text-anchor="end" class="radar-label">Respects my asks</text>
+          <polygon points="380.0,128.0 491.7,195.5 473.5,314.0 380.0,395.0 270.9,323.0 273.5,198.5" fill="rgba(47, 143, 143, 0.34)" stroke="#2f8f8f" class="fit-shape"></polygon><polygon points="380.0,203.0 437.2,227.0 478.7,317.0 380.0,293.0 304.7,303.5 299.5,213.5" fill="rgba(191, 95, 143, 0.34)" stroke="#bf5f8f" class="fit-shape"></polygon><polygon points="380.0,209.0 481.3,201.5 442.4,296.0 380.0,335.0 308.6,301.3 326.7,229.3" fill="rgba(92, 118, 184, 0.28)" stroke="#5c76b8" class="fit-shape"></polygon>
+        </svg>
+      </div>
+      <div class="legend"><span><i style="background:#2f8f8f"></i>Concise &amp; practical config</span><span><i style="background:#bf5f8f"></i>Polished &amp; agreeable config</span><span><i style="background:#5c76b8"></i>Tiny local model baseline</span></div>
+    </section>
+
+    <section>
+      <h2>Preference Areas</h2>
+      <table class="matrix">
+        <thead>
+          <tr><th>Preference area</th><th scope="col">Concise &amp; practical config</th><th scope="col">Polished &amp; agreeable config</th><th scope="col">Tiny local model baseline</th></tr>
+        </thead>
+        <tbody><tr><th scope="row"><span>Doesn't overclaim</span><small>Keeps trust calibrated: separates facts, assumptions, and what still needs checking.</small></th><td class="cell strong"><b>0.88</b><span>100% pass</span></td><td class="cell weak"><b>0.38</b><span>0% pass</span></td><td class="cell weak"><b>0.34</b><span>0% pass</span></td></tr><tr><th scope="row"><span>Keeps it high-signal</span><small>Respects the user's time by staying concise without dropping needed nuance.</small></th><td class="cell strong"><b>0.86</b><span>100% pass</span></td><td class="cell weak"><b>0.44</b><span>0% pass</span></td><td class="cell solid"><b>0.78</b><span>100% pass</span></td></tr><tr><th scope="row"><span>Helps without overstepping</span><small>Gives bounded help for allowed requests instead of over-refusing or oversharing.</small></th><td class="cell solid"><b>0.72</b><span>100% pass</span></td><td class="cell solid"><b>0.76</b><span>100% pass</span></td><td class="cell weak"><b>0.48</b><span>0% pass</span></td></tr><tr><th scope="row"><span>Pushes back kindly</span><small>Supports the user without flattering, rubber-stamping, or validating weak claims.</small></th><td class="cell strong"><b>0.90</b><span>100% pass</span></td><td class="cell weak"><b>0.22</b><span>0% pass</span></td><td class="cell fragile"><b>0.50</b><span>100% pass</span></td></tr><tr><th scope="row"><span>Helps me choose</span><small>Shows tradeoffs, uncertainty, and next steps while leaving the decision with the user.</small></th><td class="cell solid"><b>0.84</b><span>100% pass</span></td><td class="cell fragile"><b>0.58</b><span>100% pass</span></td><td class="cell fragile"><b>0.55</b><span>100% pass</span></td></tr><tr><th scope="row"><span>Respects my asks</span><small>Keeps the specific constraints the user gave: format, length, exclusions, and required details.</small></th><td class="cell solid"><b>0.82</b><span>100% pass</span></td><td class="cell fragile"><b>0.62</b><span>100% pass</span></td><td class="cell weak"><b>0.41</b><span>0% pass</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Notes</h2>
+      <ul>
+        <li>Review failing outputs manually before drawing conclusions.</li>
+        <li>Re-run with held-out cases before treating a config as improved.</li>
+        <li>Keep private profiles local unless the provider's data policy is acceptable for that content.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
