@@ -99,12 +99,12 @@ Repeat one row per model per prompt.
 
 After collecting answers:
 
-```powershell
-node skills/vibecheckbench/scripts/score-answers.mjs `
-  --input captured-answers.json `
+```bash
+node skills/vibecheckbench/scripts/score-answers.mjs \
+  --input captured-answers.json \
   --out reports/results.subject-models.json
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.subject-models.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.subject-models.json \
   --out reports/skill-chart.subject-models.html
 ```

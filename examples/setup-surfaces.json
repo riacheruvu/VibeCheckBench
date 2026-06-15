@@ -1,0 +1,71 @@
+{
+  "version": "vibecheckbench-setup-surfaces-v1",
+  "surfaces": [
+    {
+      "id": "model",
+      "label": "Model",
+      "question": "Is the underlying model capable and reliable enough for this kind of work?",
+      "changes": ["Model", "Model size", "Local compression level", "Provider or local runner"],
+      "measures": ["Preference fit", "Response time", "Token use", "Cost", "Repeated failure patterns"],
+      "support": "executable",
+      "executableFields": ["model.provider", "model.name", "model.quantization"]
+    },
+    {
+      "id": "instructions",
+      "label": "Instructions",
+      "question": "Do the system prompt and project rules clearly express what the user needs?",
+      "changes": ["System prompt", "Project instructions", "Folder-specific rules"],
+      "measures": ["Follows constraints", "Behavior changes", "Extra context used"],
+      "support": "partial",
+      "executableFields": ["instructions.systemPromptFile"]
+    },
+    {
+      "id": "memory",
+      "label": "Memory",
+      "question": "Are the right user preferences and project details being remembered at the right time?",
+      "changes": ["Saved user preferences", "Project notes", "What gets recalled", "When memory expires"],
+      "measures": ["Remembers preferences", "Uses stale or wrong memory", "Contradictions", "Extra context used"],
+      "support": "manifest"
+    },
+    {
+      "id": "skills",
+      "label": "Skills",
+      "question": "Would a reusable workflow reduce repeated prompting or common mistakes?",
+      "changes": ["Workflow instructions", "Helper scripts", "Reference material", "When the skill should run"],
+      "measures": ["Completes the workflow", "Uses tools correctly", "Needs less repeated prompting", "Extra instructions loaded"],
+      "support": "manifest"
+    },
+    {
+      "id": "tools",
+      "label": "Tools and access",
+      "question": "Does the setup have the tools it needs without more access than necessary?",
+      "changes": ["Available tools", "Connectors", "Permissions", "Sandbox rules", "Automatic hooks"],
+      "measures": ["Completes tool actions", "Avoids unnecessary calls", "Blocks risky actions", "Performs the intended action"],
+      "support": "trace_required"
+    },
+    {
+      "id": "inference",
+      "label": "Generation settings",
+      "question": "Are the response length, creativity, and consistency appropriate for the task?",
+      "changes": ["Creativity or randomness", "Response limit", "Context limit", "Repeatability settings", "Stop rules"],
+      "measures": ["Consistency", "Verbosity", "Response time", "Token use", "Repeatability"],
+      "support": "adapter_required"
+    },
+    {
+      "id": "context",
+      "label": "Context and retrieval",
+      "question": "Is the setup receiving the right information at the right time?",
+      "changes": ["Included files", "How text is split", "Search order", "Summaries", "Conversation history length"],
+      "measures": ["Relevant context", "Answers grounded in the source", "Missing evidence", "Context size"],
+      "support": "adapter_required"
+    },
+    {
+      "id": "routing",
+      "label": "Routing and orchestration",
+      "question": "Should different tasks use different models, workflows, tools, or levels of autonomy?",
+      "changes": ["Task routing", "Planning versus doing", "Fallbacks", "Human approval points"],
+      "measures": ["Fit for each task", "Good handoffs", "Response time", "Cost", "Completion"],
+      "support": "experiment"
+    }
+  ]
+}

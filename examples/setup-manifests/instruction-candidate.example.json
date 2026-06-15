@@ -1,0 +1,35 @@
+{
+  "version": "vibecheckbench-setup-v1",
+  "id": "instruction-candidate",
+  "label": "Evidence-aware instruction candidate",
+  "model": {
+    "provider": "ollama",
+    "name": "qwen3:0.6b"
+  },
+  "instructions": {
+    "systemPromptFile": "examples/config-candidates/evidence-aware-pushback.txt",
+    "projectInstructionFiles": []
+  },
+  "memory": {
+    "files": [],
+    "policy": "none"
+  },
+  "skills": {
+    "enabled": []
+  },
+  "tools": {
+    "enabled": [],
+    "permissionProfile": "local-only"
+  },
+  "inference": {
+    "temperature": 0,
+    "maxTokens": 512
+  },
+  "context": {
+    "files": [],
+    "retrievalPolicy": "none"
+  },
+  "routing": {
+    "strategy": "single-setup"
+  }
+}

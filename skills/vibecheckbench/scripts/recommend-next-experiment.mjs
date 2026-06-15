@@ -69,6 +69,19 @@ function preferenceOf(row) {
   return varsOf(row).preference_id || row.metric || "unknown_preference";
 }
 
+const PREFERENCE_LABELS = {
+  calibrated_factuality_and_sourceability: "Doesn't overclaim",
+  concise_length_control: "Keeps it high-signal",
+  context_sensitive_non_refusal: "Helps without overstepping",
+  social_sycophancy_resistance: "Pushes back kindly",
+  user_agency_and_decision_fit: "Helps me choose",
+  verifiable_instruction_following: "Respects my asks",
+};
+
+function preferenceLabel(id) {
+  return PREFERENCE_LABELS[id] || String(id).replaceAll("_", " ");
+}
+
 function scoreOf(row) {
   const value = Number(row.score ?? row.gradingResult?.score ?? row.result?.score);
   if (Number.isFinite(value)) return Math.max(0, Math.min(1, value));
@@ -148,54 +161,60 @@ function decide(setups, winners, args, project) {
   if (!enoughEvidence || !enoughPreferenceEvidence || heldOutCases === 0) {
     return {
       action: "collect_more_evidence",
-      headline: "Strengthen the evidence before changing the setup",
+      targetSurface: "evidence",
+      headline: "Add a few more tests before changing the setup",
       rationale: heldOutCases === 0
-        ? "The project has no held-out personal-fit cases, so an apparent gain could be test overfitting."
+        ? "No tests have been saved for a final unseen check, so an apparent improvement may only fit the examples used during development."
         : !enoughEvidence
-          ? `At least one setup has fewer than ${args.minCases} evaluated cases.`
-          : `At least one preference has fewer than ${args.minPreferenceCases} cases per compared setup.`,
-      nextExperiment: "Review more conversation-derived candidates, approve public-safe rewrites, and reserve some as held-out cases.",
+          ? `At least one setup has answered fewer than ${args.minCases} tests.`
+          : `At least one preference has fewer than ${args.minPreferenceCases} tests for each setup.`,
+      nextExperiment: "Review more suggested tests, remove private details, and save some for a final unseen check.",
     };
   }
   if (setups.length === 1) {
     return {
       action: "test_config_change",
-      headline: "Run a controlled config comparison",
+      targetSurface: "instructions",
+      headline: "Compare one focused setup change",
       rationale: lowPreferences.length
-        ? `The current setup is weakest on: ${lowPreferences.join(", ")}.`
-        : "One setup cannot reveal whether a prompt, memory, skill, or model change improves personal fit.",
-      nextExperiment: "Keep the model fixed, change one config layer, and compare baseline versus candidate on development and held-out cases.",
+        ? `The current setup is weakest on: ${lowPreferences.map(preferenceLabel).join(", ")}.`
+        : "A single result cannot show whether changing the prompt, memory, skill, or model would improve the experience.",
+      nextExperiment: "Keep the model fixed, change one part of the setup, and compare it on both improvement tests and final unseen tests.",
     };
   }
   if (differentWinners.size > 1) {
     return {
       action: "test_workflow_routing",
-      headline: "Different setups fit different parts of the user's workflow",
-      rationale: meaningfulWins.map(item => `${item.winner.setup} leads on ${item.preferenceId}`).join("; "),
-      nextExperiment: "Test a simple routing rule by task or preference area instead of forcing one model/config to handle every workflow.",
+      targetSurface: "routing",
+      headline: "Different setups may suit different kinds of work",
+      rationale: meaningfulWins.map(item => `${item.winner.setup} leads on ${preferenceLabel(item.preferenceId)}`).join("; "),
+      nextExperiment: "Try a simple rule that selects a setup by task or preference instead of forcing one setup to handle everything.",
     };
   }
   if (overallDelta >= args.meaningfulDelta && top.passRate >= runnerUp.passRate) {
     return {
       action: "validate_setup_choice",
-      headline: `${top.name} is the leading personal-fit candidate`,
-      rationale: `It leads mean fit by ${overallDelta.toFixed(2)} with a ${(top.passRate * 100).toFixed(0)}% pass rate. Latency and token tradeoffs still need review.`,
-      nextExperiment: "Repeat the comparison on held-out cases and inspect every regression before adopting this setup.",
+      targetSurface: "model",
+      headline: `${top.name} matched these preferences best`,
+      rationale: `It leads the average score by ${overallDelta.toFixed(2)} and passed ${(top.passRate * 100).toFixed(0)}% of the checks. Response time and token use still matter.`,
+      nextExperiment: "Repeat the comparison on final unseen tests and review every behavior that became worse before adopting it.",
     };
   }
   if (lowPreferences.length) {
     return {
       action: "test_targeted_config_change",
-      headline: "Model choice is inconclusive; target the weak behavior",
-      rationale: `The leading setups are close, while these preference areas remain weak: ${lowPreferences.join(", ")}.`,
-      nextExperiment: "Keep the model fixed and test one prompt, memory, or skill change aimed only at the weak preference area.",
+      targetSurface: "instructions",
+      headline: "The models are close; focus on the weak behavior",
+      rationale: `The leading setups are close, while these preferences remain weak: ${lowPreferences.map(preferenceLabel).join(", ")}.`,
+      nextExperiment: "Keep the model fixed and test one prompt, memory, or skill change aimed at that preference.",
     };
   }
   return {
     action: "keep_and_monitor",
-    headline: "No change is supported yet",
-    rationale: "The compared setups are close on the current personal-fit evidence.",
-    nextExperiment: "Keep the simpler or cheaper setup, collect naturally occurring corrections, and rerun when the profile gains discriminating cases.",
+      targetSurface: "monitoring",
+      headline: "There is not enough evidence to change the setup yet",
+      rationale: "The compared setups performed similarly on the current tests.",
+      nextExperiment: "Keep the simpler or cheaper setup, save new moments of friction, and rerun when the test set can better separate the options.",
   };
 }
 

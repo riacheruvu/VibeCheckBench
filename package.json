@@ -8,6 +8,7 @@
     "skill:install": "node skills/vibecheckbench/scripts/install-codex-skill.mjs",
     "fit:mine": "node skills/vibecheckbench/scripts/mine-conversation-history.mjs",
     "fit:promote": "node skills/vibecheckbench/scripts/promote-history-candidates.mjs",
-    "fit:recommend": "node skills/vibecheckbench/scripts/recommend-next-experiment.mjs"
+    "fit:recommend": "node skills/vibecheckbench/scripts/recommend-next-experiment.mjs",
+    "fit:plan": "node skills/vibecheckbench/scripts/plan-setup-experiment.mjs"
   }
 }

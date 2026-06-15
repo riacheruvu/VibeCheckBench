@@ -7,6 +7,8 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { recommend } from "../scripts/recommend-next-experiment.mjs";
+import { mineConversationFile } from "../scripts/mine-conversation-history.mjs";
+import { promoteReview } from "../scripts/promote-history-candidates.mjs";
 
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BUNDLED_ROOT = path.resolve(APP_DIR, "..", "..", "..");
@@ -26,6 +28,12 @@ function resolveRoot() {
 const ROOT = resolveRoot();
 const PUBLIC_DIR = path.join(APP_DIR, "public");
 const RUNS_DIR = path.join(ROOT, "captures", "dashboard-runs");
+const FIT_DIR = path.join(ROOT, "captures", "personal-fit");
+const HISTORY_REVIEW = path.join(FIT_DIR, "history-review.json");
+const REVIEW_DECISIONS = path.join(FIT_DIR, "review-decisions.json");
+const FIT_PROJECT = path.join(FIT_DIR, "project.json");
+const FIT_TASKS = path.join(FIT_DIR, "tasks");
+const SETUP_SURFACES = path.join(ROOT, "examples", "setup-surfaces.json");
 const portArgIndex = process.argv.indexOf("--port");
 const PORT = Number(
   portArgIndex >= 0 ? process.argv[portArgIndex + 1] : process.env.VIBECHECKBENCH_PORT || 4173
@@ -94,6 +102,177 @@ function safeReadJson(file) {
 function writeJson(file, payload) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+function readBody(request, maxBytes = 5 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    request.on("data", chunk => {
+      body += chunk;
+      if (Buffer.byteLength(body) > maxBytes) {
+        reject(new Error("Request is too large."));
+        request.destroy();
+      }
+    });
+    request.on("end", () => {
+      try {
+        resolve(JSON.parse(body || "{}"));
+      } catch {
+        reject(new Error("Invalid JSON."));
+      }
+    });
+    request.on("error", reject);
+  });
+}
+
+function reviewedSamples() {
+  const tasks = [
+    ...readTasks("examples/tasks"),
+    ...readTasks("examples/tasks-heldout"),
+  ];
+  return tasks.map(task => ({
+    id: task.id,
+    title: task.title,
+    preferenceId: task.preference_id,
+    userProfile: task.input?.user_profile || "",
+    prompt: task.input?.prompt || task.input?.turns?.at(-1)?.content || "",
+    expectedBehavior: task.expected_behavior?.summary || "",
+    hardChecks: task.expected_behavior?.hard_checks || [],
+    split: task.provenance?.split || "development",
+  }));
+}
+
+function defaultReview() {
+  return {
+    version: "vibecheckbench-history-review-v1",
+    generatedAt: new Date().toISOString(),
+    sourceFileHash: "none",
+    privacy: {
+      networkCalls: false,
+      excerptsRedacted: true,
+      rawContentInTasks: false,
+      recommendation: "Keep this review queue local. Accept, edit, or reject every candidate before benchmarking.",
+    },
+    summary: { conversationsScanned: 0, candidatesFound: 0 },
+    candidates: [],
+  };
+}
+
+function evidenceState() {
+  const review = safeReadJson(HISTORY_REVIEW) || defaultReview();
+  const decisions = safeReadJson(REVIEW_DECISIONS) || {
+    version: "vibecheckbench-review-decisions-v1",
+    decisions: [],
+  };
+  return {
+    review,
+    decisions,
+    project: safeReadJson(FIT_PROJECT),
+    samples: reviewedSamples(),
+    setupSurfaces: safeReadJson(SETUP_SURFACES)?.surfaces || [],
+  };
+}
+
+function mergeReviewCandidates(previous, current) {
+  const merged = new Map();
+  for (const candidate of previous?.candidates || []) merged.set(candidate.id, candidate);
+  for (const candidate of current?.candidates || []) merged.set(candidate.id, candidate);
+  return [...merged.values()].sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0));
+}
+
+function mineEvidenceFile(inputPath) {
+  const previous = safeReadJson(HISTORY_REVIEW);
+  const result = mineConversationFile({
+    cwd: ROOT,
+    input: path.relative(ROOT, inputPath),
+    out: path.relative(ROOT, HISTORY_REVIEW),
+    tasksDir: path.relative(ROOT, path.join(FIT_DIR, "draft-tasks")),
+  });
+  const current = safeReadJson(HISTORY_REVIEW) || defaultReview();
+  current.candidates = mergeReviewCandidates(previous, current);
+  current.summary.candidatesFound = current.candidates.length;
+  writeJson(HISTORY_REVIEW, current);
+  return { candidatesAdded: result.candidates.length, totalCandidates: current.candidates.length };
+}
+
+function upsertDecision(input) {
+  const allowedStatuses = ["accepted", "rejected", "deferred"];
+  if (!input.candidateId) throw new Error("candidateId is required.");
+  if (!allowedStatuses.includes(input.status)) throw new Error("status must be accepted, rejected, or deferred.");
+  if (input.status === "accepted" && !String(input.publicSafePrompt || "").trim()) {
+    throw new Error("Accepted samples need a public-safe prompt.");
+  }
+  const payload = safeReadJson(REVIEW_DECISIONS) || {
+    version: "vibecheckbench-review-decisions-v1",
+    decisions: [],
+  };
+  const decision = {
+    candidateId: input.candidateId,
+    status: input.status,
+    split: input.split === "held_out" ? "held_out" : "development",
+    title: String(input.title || "").trim(),
+    publicSafePrompt: String(input.publicSafePrompt || "").trim(),
+    expectedBehavior: String(input.expectedBehavior || "").trim(),
+    userProfile: String(input.userProfile || "").trim(),
+    hardChecks: Array.isArray(input.hardChecks) ? input.hardChecks.filter(Boolean) : [],
+    reviewedAt: new Date().toISOString(),
+  };
+  payload.decisions = payload.decisions.filter(row => row.candidateId !== decision.candidateId);
+  payload.decisions.push(decision);
+  writeJson(REVIEW_DECISIONS, payload);
+  return decision;
+}
+
+function createManualCandidate(input) {
+  if (!String(input.publicSafePrompt || "").trim()) throw new Error("A test prompt is required.");
+  if (!String(input.preferenceId || "").trim()) throw new Error("A preference area is required.");
+  const requestedPreference = String(input.preferenceId);
+  const customName = String(input.preferenceName || "").trim();
+  if (requestedPreference === "custom" && !customName) throw new Error("Custom cases need a preference name.");
+  const customSlug = customName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48);
+  if (requestedPreference === "custom" && !customSlug) {
+    throw new Error("Custom preference names need at least one letter or number.");
+  }
+  const preferenceId = requestedPreference === "custom" ? `custom_${customSlug}` : requestedPreference;
+  const review = safeReadJson(HISTORY_REVIEW) || defaultReview();
+  const evidenceHash = crypto.createHash("sha256")
+    .update(`${preferenceId}:${input.publicSafePrompt}:${Date.now()}`)
+    .digest("hex").slice(0, 12);
+  const candidate = {
+    id: `candidate-${evidenceHash}`,
+    reviewStatus: "needs_review",
+    preferenceId,
+    preferenceLabel: customName || "",
+    signalType: "manual_case",
+    confidence: 1,
+    userProfile: String(input.userProfile || "The user has explicitly defined this preference."),
+    conversationHash: "manual",
+    turnIndex: 0,
+    evidenceHash,
+    userExcerpt: "Manually authored public-safe sample.",
+    priorAssistantExcerpt: "",
+  };
+  review.candidates.push(candidate);
+  review.summary.candidatesFound = review.candidates.length;
+  writeJson(HISTORY_REVIEW, review);
+  upsertDecision({
+    ...input,
+    candidateId: candidate.id,
+    status: "accepted",
+  });
+  return candidate;
+}
+
+function promoteEvidence() {
+  const review = safeReadJson(HISTORY_REVIEW) || defaultReview();
+  const decisions = safeReadJson(REVIEW_DECISIONS) || { decisions: [] };
+  return promoteReview({
+    review,
+    decisions,
+    outPath: FIT_PROJECT,
+    tasksDir: FIT_TASKS,
+    name: "My personal fit",
+  });
 }
 
 function runRows(payload) {
@@ -429,6 +608,7 @@ async function executeConfigGate(record, dir) {
     },
     decision: {
       action: eligible ? "validate_config_change" : "keep_baseline_and_revise",
+      targetSurface: "instructions",
       headline: eligible
         ? "The config change earned a closer human review"
         : "Keep the baseline and revise the hypothesis",
@@ -492,6 +672,56 @@ const server = http.createServer((request, response) => {
   if (request.method === "GET" && url.pathname === "/api/presets") {
     return json(response, 200, Object.values(PRESETS));
   }
+  if (request.method === "GET" && url.pathname === "/api/evidence") {
+    return json(response, 200, evidenceState());
+  }
+  if (request.method === "POST" && url.pathname === "/api/evidence/mine-example") {
+    try {
+      const result = mineEvidenceFile(path.join(ROOT, "examples", "conversation-history.public-safe.example.json"));
+      return json(response, 200, { ...result, evidence: evidenceState() });
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+  if (request.method === "POST" && url.pathname === "/api/evidence/import") {
+    readBody(request).then(input => {
+      const filename = path.basename(String(input.filename || "conversation-export.json"))
+        .replace(/[^A-Za-z0-9._-]/g, "_");
+      const content = String(input.content || "");
+      if (!content.trim()) throw new Error("The imported conversation file is empty.");
+      const importDir = path.join(FIT_DIR, "imports");
+      fs.mkdirSync(importDir, { recursive: true });
+      const inputPath = path.join(importDir, `${Date.now()}-${filename}`);
+      fs.writeFileSync(inputPath, content, "utf8");
+      const result = mineEvidenceFile(inputPath);
+      json(response, 200, { ...result, evidence: evidenceState() });
+    }).catch(error => json(response, 400, { error: error.message }));
+    return;
+  }
+  if (request.method === "POST" && url.pathname === "/api/evidence/decision") {
+    readBody(request, 256 * 1024)
+      .then(input => json(response, 200, { decision: upsertDecision(input), evidence: evidenceState() }))
+      .catch(error => json(response, 400, { error: error.message }));
+    return;
+  }
+  if (request.method === "POST" && url.pathname === "/api/evidence/manual") {
+    readBody(request, 256 * 1024)
+      .then(input => json(response, 200, { candidate: createManualCandidate(input), evidence: evidenceState() }))
+      .catch(error => json(response, 400, { error: error.message }));
+    return;
+  }
+  if (request.method === "POST" && url.pathname === "/api/evidence/promote") {
+    try {
+      const result = promoteEvidence();
+      return json(response, 200, {
+        promoted: result.approved.length,
+        project: result.project,
+        evidence: evidenceState(),
+      });
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
   if (request.method === "GET" && url.pathname === "/api/preflight") {
     fetch("http://127.0.0.1:11434/api/tags")
       .then(async result => {
@@ -520,24 +750,21 @@ const server = http.createServer((request, response) => {
     return record ? json(response, 200, record) : json(response, 404, { error: "Run not found." });
   }
   if (request.method === "POST" && url.pathname === "/api/runs") {
-    let body = "";
-    request.on("data", chunk => { body += chunk; });
-    request.on("end", () => {
-      let input;
-      try { input = JSON.parse(body || "{}"); } catch { return json(response, 400, { error: "Invalid JSON." }); }
+    readBody(request, 64 * 1024).then(input => {
       const preset = PRESETS[input.presetId];
       if (!preset) return json(response, 400, { error: "Unknown evaluation preset." });
       const { record, dir } = createRun(preset);
       activeRuns.set(record.id, record);
       executeRun(preset, record, dir);
       return json(response, 202, record);
-    });
+    }).catch(error => json(response, 400, { error: error.message }));
     return;
   }
   serveStatic(request, response);
 });
 
 fs.mkdirSync(RUNS_DIR, { recursive: true });
+fs.mkdirSync(FIT_DIR, { recursive: true });
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`VibeCheckBench dashboard: http://127.0.0.1:${PORT}`);
   console.log("Local-only server. Press Ctrl+C to stop.");

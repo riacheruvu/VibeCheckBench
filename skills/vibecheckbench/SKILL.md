@@ -73,6 +73,11 @@ Require some accepted cases to use the `held_out` split before recommending a
 configuration replacement. The project manifest is the local source of truth;
 it stores hashes and review decisions, not raw conversation excerpts.
 
+The local dashboard exposes this as the **Evidence** workspace. Use it to import
+JSON/JSONL/text/Markdown exports, review mined candidates, create manual
+public-safe cases, and build the approved personal-fit project. Automatic mining
+must stop at candidates; it must not approve or publish inferred preferences.
+
 ## Config Improvement
 
 Use the optimizer only with a separate held-out case file:
@@ -95,6 +100,17 @@ Prefer the smallest supported intervention. Distinguish among collecting more
 evidence, changing a prompt/memory/skill while holding the model fixed, choosing
 a different model, or routing different workflows to different setups. Never
 present the recommendation as automatic deployment.
+
+When "config" could mean several things, model the setup explicitly and plan a
+one-surface experiment:
+
+```bash
+node "{baseDir}/scripts/plan-setup-experiment.mjs" --baseline baseline-setup.json --candidate candidate-setup.json --out reports/setup-experiment.json
+```
+
+Setup surfaces are model, instructions, memory, skills, tools/access, inference
+settings, context/retrieval, and routing/orchestration. Only claim execution for
+surfaces supported by the active provider or trace adapter.
 
 ## Workflow
 
@@ -139,17 +155,10 @@ If Promptfoo is available and the configured providers are local/offline, run it
 promptfoo eval -c promptfooconfig.yaml --output reports/results.json
 ```
 
-When this repo's isolated pinned runtime is installed on Windows, the optional
-privacy-safe wrapper is:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run-promptfoo.ps1 eval -c promptfooconfig.yaml --output reports/results.json --no-cache
-```
-
-The wrapper uses `.promptfoo-runtime`, stores Promptfoo state under the ignored
-`.promptfoo/` directory, and disables telemetry, update checks, WAL mode, and
-disk caching. On macOS or Linux, use an already installed `promptfoo` command,
-or install the pinned version into a local project runtime after user approval.
+Prefer the cross-platform `promptfoo` command. Store Promptfoo state under the
+ignored `.promptfoo/` directory and disable telemetry, update checks, WAL mode,
+and disk caching for privacy-sensitive local runs. The repository may include
+platform-specific convenience wrappers, but the skill must not depend on them.
 
 If Promptfoo is not available, or if running it would download packages or call hosted providers, ask the user for explicit approval before using `npx promptfoo@latest` or any provider API. Explain that `npx promptfoo@latest` may download code and hosted providers may receive prompts/outputs.
 
@@ -300,6 +309,7 @@ node --check "{baseDir}/scripts/promote-history-candidates.mjs"
 node --check "{baseDir}/scripts/optimize-config.mjs"
 node --check "{baseDir}/scripts/gate-config-results.mjs"
 node --check "{baseDir}/scripts/recommend-next-experiment.mjs"
+node --check "{baseDir}/scripts/plan-setup-experiment.mjs"
 node --check "{baseDir}/dashboard/server.mjs"
 node --check "{baseDir}/dashboard/public/app.js"
 node --check "{baseDir}/scripts/build-dashboard-demo.mjs"

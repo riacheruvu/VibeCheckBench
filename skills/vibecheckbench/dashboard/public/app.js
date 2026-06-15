@@ -1,6 +1,15 @@
 const STATIC_DEMO = !["127.0.0.1", "localhost"].includes(location.hostname);
-const state = { presets: [], runs: [], selectedPreset: "", selectedRun: "" };
+const state = { presets: [], runs: [], selectedPreset: "", selectedRun: "", evidence: null };
 const $ = selector => document.querySelector(selector);
+const PREFERENCES = {
+  calibrated_factuality_and_sourceability: "Doesn't overclaim",
+  concise_length_control: "Keeps it high-signal",
+  context_sensitive_non_refusal: "Helps without overstepping",
+  social_sycophancy_resistance: "Pushes back kindly",
+  user_agency_and_decision_fit: "Helps me choose",
+  verifiable_instruction_following: "Respects my asks",
+  custom: "Other / custom",
+};
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -32,9 +41,146 @@ function showView(view) {
   $(".nav-item.active")?.classList.remove("active");
   document.querySelector(`[data-view="${view}"]`)?.classList.add("active");
   $("#runs-view").classList.toggle("hidden", view !== "runs");
+  $("#evidence-view").classList.toggle("hidden", view !== "evidence");
+  $("#setups-view").classList.toggle("hidden", view !== "setups");
   const hasRuns = state.runs.length > 0;
   $("#dashboard").classList.toggle("hidden", view !== "overview" || !hasRuns);
   $("#empty-state").classList.toggle("hidden", view !== "overview" || hasRuns);
+}
+
+function decisionFor(candidateId) {
+  return state.evidence?.decisions?.decisions?.find(item => item.candidateId === candidateId) || {};
+}
+
+function renderEvidenceSummary() {
+  const review = state.evidence?.review;
+  const decisions = state.evidence?.decisions?.decisions || [];
+  const project = state.evidence?.project;
+  const accepted = decisions.filter(item => item.status === "accepted").length;
+  const heldOut = decisions.filter(item => item.status === "accepted" && item.split === "held_out").length;
+  const cards = [
+    { label: "Suggestions to review", value: review?.candidates?.length || 0, note: "Found locally or added by you" },
+    { label: "Ready to use", value: accepted, note: "Reviewed tests without private details" },
+    { label: "Saved for final check", value: heldOut, note: "Kept unseen while you improve the setup" },
+    { label: "Tests created", value: project?.summary?.acceptedCases || 0, note: project ? "Ready for the next evaluation" : "Create the set when your review is done" },
+  ];
+  $("#evidence-summary").innerHTML = cards.map(card => `
+    <article class="summary-card">
+      <span class="label">${escapeHtml(card.label)}</span>
+      <strong>${escapeHtml(card.value)}</strong>
+      <small>${escapeHtml(card.note)}</small>
+    </article>`).join("");
+}
+
+function preferenceOptions(selected = "") {
+  return Object.entries(PREFERENCES).map(([id, label]) =>
+    `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+}
+
+function preferenceLabel(candidate) {
+  return candidate.preferenceLabel || PREFERENCES[candidate.preferenceId] || candidate.preferenceId;
+}
+
+function renderCandidates() {
+  const candidates = state.evidence?.review?.candidates || [];
+  $("#candidate-list").innerHTML = candidates.length ? candidates.map(candidate => {
+    const decision = decisionFor(candidate.id);
+    const status = decision.status || "deferred";
+    return `
+      <article class="candidate-card" data-candidate="${escapeHtml(candidate.id)}">
+        <div class="candidate-topline">
+          <div><span class="preference-chip">${escapeHtml(preferenceLabel(candidate))}</span><h3>${escapeHtml(decision.title || candidate.suggestedTitle || `Test ${preferenceLabel(candidate)}`)}</h3></div>
+          <span class="confidence">Automatic suggestion</span>
+        </div>
+        <p class="evidence-excerpt"><b>What prompted this suggestion</b><span>${escapeHtml(candidate.userExcerpt || "Added directly by the user.")}</span></p>
+        <div class="candidate-fields">
+          <label>Test name<input data-field="title" value="${escapeHtml(decision.title || candidate.suggestedTitle || `Test ${preferenceLabel(candidate)}`)}"></label>
+          <label>Preference in plain language<textarea data-field="userProfile" rows="2">${escapeHtml(decision.userProfile || candidate.userProfile || "")}</textarea></label>
+          <label>Test prompt without private details<textarea data-field="publicSafePrompt" rows="3" placeholder="Rewrite the situation without names, private projects, or sensitive details.">${escapeHtml(decision.publicSafePrompt || candidate.suggestedPublicSafePrompt || "")}</textarea></label>
+          <label>A good answer should<textarea data-field="expectedBehavior" rows="2">${escapeHtml(decision.expectedBehavior || candidate.suggestedExpectedBehavior || "")}</textarea></label>
+          <label>When to use it<select data-field="split"><option value="development" ${decision.split !== "held_out" ? "selected" : ""}>While improving the setup</option><option value="held_out" ${decision.split === "held_out" ? "selected" : ""}>For a final, unseen check</option></select></label>
+        </div>
+        <div class="candidate-actions">
+          <button class="secondary-button candidate-decision ${status === "rejected" ? "selected-danger" : ""}" data-status="rejected">Reject</button>
+          <button class="secondary-button candidate-decision ${status === "deferred" ? "selected-neutral" : ""}" data-status="deferred">Keep for later</button>
+          <button class="primary-button candidate-decision" data-status="accepted">${status === "accepted" ? "Save changes" : "Use this test"}</button>
+        </div>
+      </article>`;
+  }).join("") : `<div class="gentle-empty"><b>No suggestions yet</b><span>Import conversations, review the public example, or add a test directly.</span></div>`;
+
+  document.querySelectorAll(".candidate-decision").forEach(button => button.addEventListener("click", async () => {
+    const card = button.closest(".candidate-card");
+    const candidate = candidates.find(item => item.id === card.dataset.candidate);
+    const field = name => card.querySelector(`[data-field="${name}"]`)?.value || "";
+    button.disabled = true;
+    try {
+      const result = await api("/api/evidence/decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: candidate.id,
+          status: button.dataset.status,
+          title: field("title"),
+          userProfile: field("userProfile"),
+          publicSafePrompt: field("publicSafePrompt"),
+          expectedBehavior: field("expectedBehavior"),
+          split: field("split"),
+        }),
+      });
+      state.evidence = result.evidence;
+      renderEvidence();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }));
+}
+
+function renderSampleLibrary() {
+  const samples = state.evidence?.samples || [];
+  $("#sample-library").innerHTML = samples.map(sample => `
+    <article class="sample-card">
+      <span class="preference-chip">${escapeHtml(PREFERENCES[sample.preferenceId] || sample.preferenceId)}</span>
+      <h3>${escapeHtml(sample.title)}</h3>
+      <p>${escapeHtml(sample.prompt)}</p>
+      <small><b>A good answer should:</b> ${escapeHtml(sample.expectedBehavior)}</small>
+    </article>`).join("");
+}
+
+function renderSetupSurfaces() {
+  const surfaces = state.evidence?.setupSurfaces || [];
+  const supportLabels = {
+    executable: "Ready to compare",
+    partial: "System prompts supported",
+    manifest: "Can be tracked",
+    trace_required: "Needs run history",
+    adapter_required: "Needs a connector",
+    experiment: "Compare as an experiment",
+  };
+  $("#setup-surfaces").innerHTML = surfaces.map(surface => `
+    <article class="surface-card">
+      <div class="surface-heading"><h3>${escapeHtml(surface.label)}</h3><span class="support ${escapeHtml(surface.support)}">${escapeHtml(supportLabels[surface.support] || surface.support)}</span></div>
+      <p>${escapeHtml(surface.question)}</p>
+      <div><b>You can change</b><span>${surface.changes.map(escapeHtml).join(" / ")}</span></div>
+      <div><b>Check whether it improves</b><span>${surface.measures.map(escapeHtml).join(" / ")}</span></div>
+    </article>`).join("");
+}
+
+function renderEvidence() {
+  renderEvidenceSummary();
+  renderCandidates();
+  renderSampleLibrary();
+  renderSetupSurfaces();
+  const preferenceSelect = $("#manual-case-form select[name='preferenceId']");
+  if (preferenceSelect && !preferenceSelect.options.length) preferenceSelect.innerHTML = preferenceOptions();
+}
+
+async function refreshEvidence() {
+  state.evidence = STATIC_DEMO
+    ? await fetch("./demo-evidence.json").then(response => response.json())
+    : await api("/api/evidence");
+  renderEvidence();
 }
 
 function renderPresets() {
@@ -55,10 +201,10 @@ function setupSummary(run) {
   const best = setups[0];
   const failed = setups.reduce((sum, setup) => sum + setup.failures.length, 0);
   const cards = [
-    { label: "Best fit in this run", value: best?.name || "Still running", note: best ? `${Math.round(best.passRate * 100)}% of checks passed` : "Results will appear here", accent: true },
-    { label: "Strongest preference", value: best?.strongest || "Waiting", note: "Where the leading setup matched best" },
-    { label: "Review needed", value: `${failed} failed ${failed === 1 ? "check" : "checks"}`, note: failed ? "Open them below before deciding" : "No failures in this run" },
-    { label: "Run footprint", value: `${run.summary?.totalTokens?.toLocaleString() || 0} tokens`, note: `${Math.round(run.summary?.averageLatencyMs || 0).toLocaleString()} ms average response` },
+    { label: "Best match in this run", value: best?.name || "Still running", note: best ? `${Math.round(best.passRate * 100)}% of your checks passed` : "Results will appear here", accent: true },
+    { label: "Matched best on", value: best?.strongest || "Waiting", note: "The preference this setup handled most reliably" },
+    { label: "Answers to review", value: `${failed} ${failed === 1 ? "answer" : "answers"}`, note: failed ? "Open them below to see what went wrong" : "No misses in this run" },
+    { label: "Time and tokens", value: `${run.summary?.totalTokens?.toLocaleString() || 0} tokens`, note: `${Math.round(run.summary?.averageLatencyMs || 0).toLocaleString()} ms per answer on average` },
   ];
   $("#summary-cards").innerHTML = cards.map(card => `
     <article class="summary-card ${card.accent ? "accent" : ""}">
@@ -74,7 +220,7 @@ function renderMatrix(run) {
   setups.forEach(setup => setup.metrics.forEach(metric => metrics.set(metric.id, metric)));
   $("#preference-matrix").innerHTML = setups.length ? `
     <table class="matrix">
-      <thead><tr><th>Preference</th>${setups.map(setup => `<th>${escapeHtml(setup.name)}</th>`).join("")}</tr></thead>
+      <thead><tr><th>Preference you care about</th>${setups.map(setup => `<th>${escapeHtml(setup.name)}</th>`).join("")}</tr></thead>
       <tbody>${[...metrics.values()].map(metric => `
         <tr>
           <th><span class="metric-title">${escapeHtml(metric.label)}</span><span class="metric-description">${escapeHtml(metric.description)}</span></th>
@@ -82,7 +228,7 @@ function renderMatrix(run) {
             const score = setup.metrics.find(item => item.id === metric.id);
             if (!score) return "<td>Not tested</td>";
             const percent = Math.round(score.score * 100);
-            return `<td class="score-cell"><div class="score-row"><b>${percent}%</b><span>${score.passed}/${score.total} passed</span></div><div class="meter"><span class="${scoreClass(score.score)}" style="width:${percent}%"></span></div></td>`;
+            return `<td class="score-cell"><div class="score-row"><b>${percent}% fit</b><span>${score.passed} of ${score.total} checks passed</span></div><div class="meter"><span class="${scoreClass(score.score)}" style="width:${percent}%"></span></div></td>`;
           }).join("")}
         </tr>`).join("")}</tbody>
     </table>` : "<p>No result details yet.</p>";
@@ -109,21 +255,29 @@ function renderDecision(run) {
   if (!run.gate) return banner.classList.add("hidden");
   const accepted = run.gate.decision?.eligibleForHumanReview;
   banner.className = `decision-banner ${accepted ? "accepted" : "rejected"}`;
-  banner.innerHTML = `<b>${accepted ? "Candidate is ready for human review" : "Keep the current configuration"}</b>${escapeHtml(run.gate.decision?.reasons?.[0] || "")}`;
+  banner.innerHTML = `<b>${accepted ? "This change is worth a closer look" : "The current setup is still the safer choice"}</b>${escapeHtml(run.gate.decision?.reasons?.[0] || "")}`;
 }
 
 function renderRecommendation(run) {
   const block = $("#recommendation-block");
   const decision = run.recommendation?.decision;
   if (!decision) return block.classList.add("hidden");
+  const actionLabels = {
+    collect_more_evidence: "Build a stronger test set",
+    test_config_change: "Compare one setup change",
+    test_workflow_routing: "Test task-based routing",
+    validate_setup_choice: "Confirm the leading setup",
+    test_targeted_config_change: "Target the weak behavior",
+    keep_and_monitor: "Keep it and keep learning",
+  };
   block.classList.remove("hidden");
   $("#recommendation").innerHTML = `
     <div>
-      <span class="recommendation-action">${escapeHtml(String(decision.action || "next experiment").replaceAll("_", " "))}</span>
+      <span class="recommendation-action">${escapeHtml(actionLabels[decision.action] || "Next experiment")}</span>
       <h3>${escapeHtml(decision.headline)}</h3>
       <p>${escapeHtml(decision.rationale)}</p>
     </div>
-    <div class="next-experiment"><b>Next experiment</b><span>${escapeHtml(decision.nextExperiment)}</span><small>Nothing changes automatically. Review the outputs and tradeoffs first.</small></div>`;
+    <div class="next-experiment"><b>Change next: ${escapeHtml(decision.targetSurface || "one part of the setup")}</b><span>${escapeHtml(decision.nextExperiment)}</span><small>VibeCheckBench will not apply the change automatically. Compare the new results before keeping it.</small></div>`;
 }
 
 function renderRun(run) {
@@ -202,6 +356,7 @@ function openSheet() {
 async function init() {
   if (STATIC_DEMO) {
     state.runs = await fetch("./demo-data.json").then(response => response.json());
+    await refreshEvidence();
     $("#new-run-button").textContent = "Read the source";
     $("#new-run-button").addEventListener("click", () => {
       const owner = location.hostname.split(".")[0];
@@ -210,6 +365,11 @@ async function init() {
     });
     $(".privacy-note b").textContent = "Read-only demo";
     $(".privacy-note small").textContent = "Example results. No evaluation runs here.";
+    $("#import-conversations").disabled = true;
+    $("#mine-example").disabled = true;
+    $("#promote-evidence").disabled = true;
+    $("#manual-case-form").querySelectorAll("input, textarea, select, button").forEach(control => { control.disabled = true; });
+    $("#candidate-list").querySelectorAll("textarea, select, button").forEach(control => { control.disabled = true; });
     $("#empty-state").classList.add("hidden");
     renderRuns();
     showView("overview");
@@ -219,6 +379,7 @@ async function init() {
     return;
   }
   state.presets = await api("/api/presets");
+  await refreshEvidence();
   const preflight = await api("/api/preflight");
   const status = $("#preflight-status");
   status.innerHTML = `<span class="status-dot"></span>${escapeHtml(preflight.ready
@@ -235,6 +396,55 @@ async function init() {
   document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
   $("#run-sheet").addEventListener("click", event => {
     if (event.target === $("#run-sheet")) $("#run-sheet").classList.add("hidden");
+  });
+  $("#import-conversations").addEventListener("click", () => $("#conversation-file").click());
+  $("#conversation-file").addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await api("/api/evidence/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, content: await file.text() }),
+      });
+      state.evidence = result.evidence;
+      renderEvidence();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      event.target.value = "";
+    }
+  });
+  $("#mine-example").addEventListener("click", async () => {
+    const result = await api("/api/evidence/mine-example", { method: "POST" });
+    state.evidence = result.evidence;
+    renderEvidence();
+  });
+  $("#promote-evidence").addEventListener("click", async () => {
+    try {
+      const result = await api("/api/evidence/promote", { method: "POST" });
+      state.evidence = result.evidence;
+      renderEvidence();
+      alert(`Built ${result.promoted} approved case(s).`);
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+  $("#manual-case-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await api("/api/evidence/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(form.entries())),
+      });
+      state.evidence = result.evidence;
+      event.currentTarget.reset();
+      renderEvidence();
+    } catch (error) {
+      alert(error.message);
+    }
   });
 }
 

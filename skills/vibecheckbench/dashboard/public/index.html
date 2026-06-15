@@ -15,6 +15,8 @@
       </div>
       <nav>
         <button class="nav-item active" data-view="overview"><span>O</span>Overview</button>
+        <button class="nav-item" data-view="evidence"><span>T</span>Build tests</button>
+        <button class="nav-item" data-view="setups"><span>I</span>Improve setup</button>
         <button class="nav-item" data-view="runs"><span>R</span>Past runs</button>
       </nav>
       <div class="privacy-note"><span class="status-dot"></span><div><b>Local mode</b><small>Nothing leaves this computer.</small></div></div>
@@ -25,7 +27,7 @@
         <div>
           <p class="eyebrow">YOUR AI, YOUR PREFERENCES</p>
           <h1>Which setup fits you?</h1>
-          <p class="subtitle">Compare behavior that creates or removes real work, not abstract leaderboard performance.</p>
+          <p class="subtitle">Compare how AI setups handle the preferences that shape your real work.</p>
         </div>
         <button id="new-run-button" class="primary-button">New evaluation</button>
       </header>
@@ -55,24 +57,24 @@
 
         <section id="recommendation-block" class="section-block hidden">
           <div class="section-heading">
-            <div><p class="eyebrow">IMPROVE WITH EVIDENCE</p><h2>What to try next</h2></div>
-            <p>One controlled experiment, based on this user's fit results.</p>
+            <div><p class="eyebrow">PRACTICAL NEXT STEP</p><h2>What to try next</h2></div>
+            <p>Change one part of the setup, then check whether it actually helped.</p>
           </div>
           <div id="recommendation" class="recommendation"></div>
         </section>
 
         <section class="section-block">
           <div class="section-heading">
-            <div><p class="eyebrow">THE USEFUL PART</p><h2>Where each setup fits</h2></div>
-            <p>Higher means closer to the behavior this evaluation asked for.</p>
+            <div><p class="eyebrow">PREFERENCE FIT</p><h2>Where each setup matched your preferences</h2></div>
+            <p>Higher scores mean the setup behaved more like you asked.</p>
           </div>
           <div id="preference-matrix" class="matrix-wrap"></div>
         </section>
 
         <section class="section-block">
           <div class="section-heading">
-            <div><p class="eyebrow">REVIEW BEFORE TRUST</p><h2>What needs attention</h2></div>
-            <p>Failed cases are more useful than a single overall score.</p>
+            <div><p class="eyebrow">LOOK CLOSER</p><h2>Where the setup missed</h2></div>
+            <p>Review the actual answers before deciding what to change.</p>
           </div>
           <div id="failures" class="failure-list"></div>
         </section>
@@ -81,6 +83,69 @@
       <section id="runs-view" class="hidden">
         <div class="section-heading"><div><p class="eyebrow">HISTORY</p><h2>Past evaluations</h2></div></div>
         <div id="runs-list" class="runs-list"></div>
+      </section>
+
+      <section id="evidence-view" class="hidden">
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow">BUILD YOUR OWN TESTS</p>
+            <h2>Turn frustrating interactions into repeatable checks</h2>
+            <p>Import conversations locally, review the suggested tests, and choose what belongs in your evaluation.</p>
+          </div>
+          <div class="workspace-actions">
+            <input id="conversation-file" class="visually-hidden" type="file" accept=".json,.jsonl,.txt,.md">
+            <button id="import-conversations" class="secondary-button">Import conversations</button>
+            <button id="mine-example" class="secondary-button">Review a public example</button>
+            <button id="promote-evidence" class="primary-button">Create test set</button>
+          </div>
+        </div>
+        <div class="workflow-steps" aria-label="How test creation works">
+          <div><span>1</span><b>Import</b><small>Choose a conversation export. It stays on this computer.</small></div>
+          <div><span>2</span><b>Review</b><small>Edit, keep, save for later, or reject each suggestion.</small></div>
+          <div><span>3</span><b>Create</b><small>Build only the public-safe test cases you approved.</small></div>
+        </div>
+        <div id="evidence-summary" class="summary-grid compact"></div>
+        <section class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">YOUR REVIEW</p><h2>Suggested tests</h2></div>
+            <p>Nothing is added until you approve it.</p>
+          </div>
+          <div id="candidate-list" class="candidate-list"></div>
+        </section>
+        <section class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">ADD YOUR OWN</p><h2>Create a test directly</h2></div>
+            <p>Use this when you already know what behavior you want to check.</p>
+          </div>
+          <form id="manual-case-form" class="case-form">
+            <label>Preference area<select name="preferenceId" required></select></label>
+            <label>Custom name (optional)<input name="preferenceName" placeholder="e.g. Explains code top-down"></label>
+            <label>Preference in plain language<input name="userProfile" required placeholder="I want answers that..."></label>
+            <label class="wide">Test prompt without private details<textarea name="publicSafePrompt" required rows="3"></textarea></label>
+            <label class="wide">A good answer should<textarea name="expectedBehavior" required rows="2"></textarea></label>
+            <label>When to use it<select name="split"><option value="development">While improving the setup</option><option value="held_out">For a final, unseen check</option></select></label>
+            <div class="form-submit"><button class="primary-button" type="submit">Add to test set</button></div>
+          </form>
+        </section>
+        <section class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">EXAMPLES</p><h2>Tests you can adapt</h2></div>
+            <p>Public examples showing the prompt and the behavior being checked.</p>
+          </div>
+          <div id="sample-library" class="sample-library"></div>
+        </section>
+      </section>
+
+      <section id="setups-view" class="hidden">
+        <div class="workspace-heading">
+          <div>
+            <p class="eyebrow">WHAT TO IMPROVE</p>
+            <h2>What can you change in an AI setup?</h2>
+            <p>Start with the smallest likely cause of the problem. Change one thing, rerun the same tests, and keep it only if it helps.</p>
+          </div>
+        </div>
+        <div class="plain-note"><b>What VibeCheckBench can do today</b><span>It can directly compare models and system prompts. It can also track planned changes to memory, skills, tools, context, and routing while their execution adapters are added.</span></div>
+        <div id="setup-surfaces" class="surface-grid"></div>
       </section>
     </main>
   </div>

@@ -65,7 +65,7 @@ can launch allowlisted, local-only evaluations and stores one canonical
 `run.json` for each run, including the compared setups, preference-level scores,
 failed outputs, latency, token usage, and any config-promotion decision.
 
-```powershell
+```bash
 npm run dashboard
 ```
 
@@ -74,6 +74,48 @@ Open `http://127.0.0.1:4173`.
 The local app can trigger evaluations. The
 [GitHub Pages demo](https://riacheruvu.github.io/VibeCheckBench/) is read-only and uses
 clearly labeled, checked-in example data.
+
+The dashboard also has two supporting workspaces:
+
+- **Build tests** imports local conversation exports, finds suggested preferences,
+  lets the user accept/edit/reject public-safe rewrites, creates manual cases,
+  and builds improvement plus final-check task packs.
+- **Improve setup** explains which part of the AI setup an improvement targets and
+  what evidence would show whether it helped.
+
+Automatic mining creates review candidates, not trusted benchmark truth. Raw
+imports and review decisions stay under gitignored `captures/`.
+
+## What can be changed
+
+The word "config" hides several different interventions. VibeCheckBench now
+models eight setup surfaces explicitly:
+
+| Surface | Examples | Current support |
+|---|---|---|
+| Model | family, size, provider, quantization | Run and compare |
+| Instructions | system prompt, `AGENTS.md`, `CLAUDE.md`, scoped rules | System prompts run directly; file adapters vary |
+| Memory | user/project memory, retrieval policy, stale-memory cleanup | Describe and plan; adapter next |
+| Skills | skill instructions, scripts, references, trigger rules | Describe and plan; operator eval available |
+| Tools and access | MCP/connectors, permissions, hooks, sandbox | Needs trace-aware evaluation |
+| Generation settings | temperature, token limits, context size, seed | Represented; provider coverage varies |
+| Context and retrieval | selected files, chunking, ranking, compaction | Needs retrieval/context adapter |
+| Routing | task-specific models, planner/executor, fallbacks, checkpoints | Plan controlled experiments |
+
+The important discipline is to change one surface at a time when possible.
+Setup manifests make that explicit:
+
+```bash
+node skills/vibecheckbench/scripts/plan-setup-experiment.mjs \
+  --baseline examples/setup-manifests/baseline.example.json \
+  --candidate examples/setup-manifests/instruction-candidate.example.json \
+  --out reports/setup-experiment.json
+```
+
+The planner identifies exactly what changed, whether the current adapters can
+execute it, and which fit, latency, token, cost, or trace measures matter. It
+does not claim that memory, skills, or tools were evaluated when only the final
+prompt changed.
 
 ## What it helps test
 
@@ -130,31 +172,31 @@ The tiny Ollama examples are local smoke tests, not model rankings. The "three m
 
 If you have Ollama installed, you can compare tiny local models without API keys:
 
-```powershell
+```bash
 ollama pull gemma3:270m
 ollama pull qwen3:0.6b
 ollama pull smollm2:360m
 
-node skills/vibecheckbench/scripts/run-local-subjects.mjs `
-  --provider ollama:chat:gemma3:270m `
-  --provider ollama:chat:qwen3:0.6b `
-  --provider ollama:chat:smollm2:360m `
-  --out reports/answers.ollama-tiny.json `
-  --scored-out reports/results.ollama-tiny.deterministic.json `
+node skills/vibecheckbench/scripts/run-local-subjects.mjs \
+  --provider ollama:chat:gemma3:270m \
+  --provider ollama:chat:qwen3:0.6b \
+  --provider ollama:chat:smollm2:360m \
+  --out reports/answers.ollama-tiny.json \
+  --scored-out reports/results.ollama-tiny.deterministic.json \
   --chart-out reports/skill-chart.ollama-tiny.deterministic.html
 ```
 
 For a hybrid score, add a local judge pass over the captured answers:
 
-```powershell
-node skills/vibecheckbench/scripts/judge-captured-answers.mjs `
-  --input reports/answers.ollama-tiny.json `
-  --tasks examples/tasks `
-  --judge-provider ollama:chat:qwen3:0.6b `
+```bash
+node skills/vibecheckbench/scripts/judge-captured-answers.mjs \
+  --input reports/answers.ollama-tiny.json \
+  --tasks examples/tasks \
+  --judge-provider ollama:chat:qwen3:0.6b \
   --out reports/results.ollama-tiny.hybrid.json
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.ollama-tiny.hybrid.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.ollama-tiny.hybrid.json \
   --out reports/skill-chart.ollama-tiny.hybrid.html
 ```
 
@@ -218,17 +260,17 @@ examples/tasks/
 
 Validate the task pack:
 
-```powershell
+```bash
 node skills/vibecheckbench/scripts/validate-tasks.mjs --tasks examples/tasks
 ```
 
 Export the task pack to Promptfoo:
 
-```powershell
-node skills/vibecheckbench/scripts/export-task-pack-promptfoo.mjs `
-  --tasks examples/tasks `
-  --provider ollama:chat:qwen3:0.6b `
-  --provider ollama:chat:llama3.2:1b `
+```bash
+node skills/vibecheckbench/scripts/export-task-pack-promptfoo.mjs \
+  --tasks examples/tasks \
+  --provider ollama:chat:qwen3:0.6b \
+  --provider ollama:chat:llama3.2:1b \
   --out promptfooconfig.tasks.yaml
 ```
 
@@ -248,8 +290,8 @@ states a preference, corrects an interaction pattern, or repeats a constraint.
 The miner is deterministic and local: it does not call a model or send the
 conversation anywhere.
 
-```powershell
-node skills/vibecheckbench/scripts/mine-conversation-history.mjs `
+```bash
+node skills/vibecheckbench/scripts/mine-conversation-history.mjs \
   --input examples/conversation-history.public-safe.example.json
 ```
 
@@ -277,11 +319,11 @@ suite:
 Record those decisions in a local JSON file, then promote only the accepted
 public-safe rewrites:
 
-```powershell
-node skills/vibecheckbench/scripts/promote-history-candidates.mjs `
-  --review captures/history-review.json `
-  --decisions examples/history-review-decisions.public-safe.example.json `
-  --out captures/personal-fit/project.json `
+```bash
+node skills/vibecheckbench/scripts/promote-history-candidates.mjs \
+  --review captures/history-review.json \
+  --decisions examples/history-review-decisions.public-safe.example.json \
+  --out captures/personal-fit/project.json \
   --tasks-dir captures/personal-fit/tasks
 ```
 
@@ -289,6 +331,10 @@ The resulting `project.json` is the source of truth for the personal eval:
 review provenance, evidence counts, development and held-out task roots, and
 the policy that prevents automatic deployment. It does not contain the original
 conversation excerpts.
+
+The dashboard performs the same workflow without requiring someone to edit JSON:
+import an export, review suggested tests, add cases directly, reserve final-check
+evidence, then select **Create test set**.
 
 ### Multi-turn preference checks
 
@@ -323,14 +369,14 @@ grading proves the tools or state transitions were correct.
 loop now separates proposal cases from held-out validation and writes an
 auditable promotion manifest:
 
-```powershell
-node skills/vibecheckbench/scripts/optimize-config.mjs `
-  --profile examples/public-agent-profile.yaml `
-  --case-file path\to\training-cases.json `
-  --validation-case-file path\to\held-out-cases.json `
-  --prompt-file examples/config-candidates/generic-supportive.txt `
-  --iterations 3 `
-  --min-improvement 2 `
+```bash
+node skills/vibecheckbench/scripts/optimize-config.mjs \
+  --profile examples/public-agent-profile.yaml \
+  --case-file path/to/training-cases.json \
+  --validation-case-file path/to/held-out-cases.json \
+  --prompt-file examples/config-candidates/generic-supportive.txt \
+  --iterations 3 \
+  --min-improvement 2 \
   --max-preference-regression 8
 ```
 
@@ -350,10 +396,10 @@ damaging privacy guidance, factual calibration, or another user preference.
 After a Promptfoo or local comparison, turn the result into an explicit next
 experiment:
 
-```powershell
-node skills/vibecheckbench/scripts/recommend-next-experiment.mjs `
-  --input reports/results.json `
-  --project captures/personal-fit/project.json `
+```bash
+node skills/vibecheckbench/scripts/recommend-next-experiment.mjs \
+  --input reports/results.json \
+  --project captures/personal-fit/project.json \
   --out reports/next-experiment.json
 ```
 
@@ -362,33 +408,51 @@ can surface mixed-fit results where workflow routing is a better hypothesis than
 choosing one global winner. The dashboard stores this recommendation beside the
 canonical `run.json` and displays it as **What to try next**.
 
+## Design references
+
+This setup model follows control surfaces exposed by real agent systems:
+
+- OpenAI Codex supports reusable [skills](https://developers.openai.com/codex/skills/)
+  and layered [`AGENTS.md` instructions](https://developers.openai.com/codex/guides/agents-md/).
+- Claude Code separates persistent instructions, auto memory, skills, hooks,
+  permissions, and tools in its
+  [memory](https://docs.anthropic.com/en/docs/claude-code/memory),
+  [skills](https://docs.anthropic.com/en/docs/claude-code/skills), and
+  [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) documentation.
+- Ollama exposes model templates, system messages, parameters, and adapters
+  through its [Modelfile](https://docs.ollama.com/modelfile) format.
+- Promptfoo evaluates outputs and providers with assertions and records runtime
+  measures through its [configuration](https://www.promptfoo.dev/docs/configuration/guide/)
+  and [assertions](https://www.promptfoo.dev/docs/configuration/expected-outputs/)
+  system.
+
 ## Test actual model answers
 
 If the model can be called through Promptfoo, use the normal provider flow above. That measures the model's own answers against the preference profile.
 
 For models inside tools like Codex or Claude Code, you may not be able to call the selected model through Promptfoo directly. In that case, capture the model's answers and score them afterward:
 
-```powershell
-node skills/vibecheckbench/scripts/score-answers.mjs `
-  --input examples/captured-model-answers.example.json `
+```bash
+node skills/vibecheckbench/scripts/score-answers.mjs \
+  --input examples/captured-model-answers.example.json \
   --out reports/results.captured.example.json
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.captured.example.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.captured.example.json \
   --out reports/skill-chart.captured.example.html
 ```
 
 If the deterministic checks look too generous, judge the captured answers with a local Ollama judge:
 
-```powershell
-node skills/vibecheckbench/scripts/judge-captured-answers.mjs `
-  --input reports/answers.ollama-tiny.json `
-  --tasks examples/tasks `
-  --judge-provider ollama:chat:qwen3:0.6b `
+```bash
+node skills/vibecheckbench/scripts/judge-captured-answers.mjs \
+  --input reports/answers.ollama-tiny.json \
+  --tasks examples/tasks \
+  --judge-provider ollama:chat:qwen3:0.6b \
   --out reports/results.ollama-tiny-judge.json
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.ollama-tiny-judge.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.ollama-tiny-judge.json \
   --out reports/skill-chart.ollama-tiny-judge.html
 ```
 
@@ -413,27 +477,27 @@ This path is best for comparing "how the model behaved for the user" across sele
 
 If you do not want to hand-author JSON, paste model outputs into a simple markdown file and let the tool ingest it:
 
-```powershell
-node skills/vibecheckbench/scripts/ingest-captured-markdown.mjs `
-  --input examples/captured-answers.markdown.example.md `
+```bash
+node skills/vibecheckbench/scripts/ingest-captured-markdown.mjs \
+  --input examples/captured-answers.markdown.example.md \
   --out reports/captured-answers.example.json
 
-node skills/vibecheckbench/scripts/score-answers.mjs `
-  --input reports/captured-answers.example.json `
+node skills/vibecheckbench/scripts/score-answers.mjs \
+  --input reports/captured-answers.example.json \
   --out reports/results.captured.example.json
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.captured.example.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.captured.example.json \
   --out reports/skill-chart.captured.example.html
 ```
 
 For repeated model-picker tests, create a local capture session. This writes a reusable prompt bundle, answer template, and session metadata under `captures/`:
 
-```powershell
-node skills/vibecheckbench/scripts/prepare-capture-session.mjs `
-  --name codex-model-sweep `
-  --model "GPT 5.5 Codex" `
-  --model "Claude Sonnet" `
+```bash
+node skills/vibecheckbench/scripts/prepare-capture-session.mjs \
+  --name codex-model-sweep \
+  --model "GPT 5.5 Codex" \
+  --model "Claude Sonnet" \
   --limit 4
 ```
 
@@ -452,28 +516,28 @@ examples/oss-model-presets.json
 
 Smoke test with no model install:
 
-```powershell
-node skills/vibecheckbench/scripts/run-local-subjects.mjs `
-  --provider "file://examples/promptfoo-aligned-provider.mjs" `
-  --provider echo `
-  --limit 1 `
-  --out reports/answers.local-smoke.json `
-  --scored-out reports/results.local-smoke.json `
+```bash
+node skills/vibecheckbench/scripts/run-local-subjects.mjs \
+  --provider "file://examples/promptfoo-aligned-provider.mjs" \
+  --provider echo \
+  --limit 1 \
+  --out reports/answers.local-smoke.json \
+  --scored-out reports/results.local-smoke.json \
   --chart-out reports/skill-chart.local-smoke.html
 ```
 
 Run against local Ollama models:
 
-```powershell
+```bash
 ollama pull qwen3:8b
 ollama pull llama3.1:8b
 
-node skills/vibecheckbench/scripts/run-local-subjects.mjs `
-  --provider ollama:chat:qwen3:8b `
-  --provider ollama:chat:llama3.1:8b `
-  --limit 1 `
-  --out reports/answers.ollama.json `
-  --scored-out reports/results.ollama.json `
+node skills/vibecheckbench/scripts/run-local-subjects.mjs \
+  --provider ollama:chat:qwen3:8b \
+  --provider ollama:chat:llama3.1:8b \
+  --limit 1 \
+  --out reports/answers.ollama.json \
+  --scored-out reports/results.ollama.json \
   --chart-out reports/skill-chart.ollama.html
 ```
 
@@ -483,9 +547,9 @@ This produces captured answers, scored results, and a chart in one step. It keep
 
 This path does not install packages, call models, or send prompts anywhere. It uses checked-in demo results so you can see the workflow and chart.
 
-```powershell
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input examples/promptfoo-results.user-fit-demo.json `
+```bash
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input examples/promptfoo-results.user-fit-demo.json \
   --out reports/skill-chart.html
 ```
 
@@ -508,17 +572,17 @@ The social preview at the top is mock demo data. It is meant to show the kind of
 
 Generate a Promptfoo config from the richer public-safe example profile:
 
-```powershell
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --example complex `
-  --provider openai:chat:gpt-4.1-mini `
-  --provider ollama:chat:qwen3:8b `
+```bash
+node skills/vibecheckbench/scripts/export-promptfoo.mjs \
+  --example complex \
+  --provider openai:chat:gpt-4.1-mini \
+  --provider ollama:chat:qwen3:8b \
   --out promptfooconfig.models.yaml
 ```
 
 Run Promptfoo and save JSON results:
 
-```powershell
+```bash
 npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
 ```
 
@@ -528,13 +592,11 @@ If Promptfoo is already installed locally, run it on any platform with:
 promptfoo eval -c promptfooconfig.models.yaml --output reports/results.json --no-cache
 ```
 
-`scripts/run-promptfoo.ps1` remains available as an optional Windows helper for
-the repo's isolated pinned runtime.
 Then generate the visual comparison:
 
-```powershell
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input reports/results.json `
+```bash
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input reports/results.json \
   --out reports/skill-chart.html
 ```
 
@@ -554,12 +616,12 @@ examples/complex-agent-system-prompt.txt
 
 Then export your custom suite:
 
-```powershell
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --profile path\to\your-profile.yaml `
-  --case-file path\to\your-cases.json `
-  --prompt-file path\to\your-system-prompt.txt `
-  --provider ollama:chat:qwen3:8b `
+```bash
+node skills/vibecheckbench/scripts/export-promptfoo.mjs \
+  --profile path/to/your-profile.yaml \
+  --case-file path/to/your-cases.json \
+  --prompt-file path/to/your-system-prompt.txt \
+  --provider ollama:chat:qwen3:8b \
   --out promptfooconfig.yaml
 ```
 
@@ -604,18 +666,18 @@ VibeCheckBench is MIT licensed to keep reuse lightweight. If it helps your work,
 
 Ollama example:
 
-```powershell
+```bash
 ollama pull qwen3:8b
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --example complex `
-  --provider ollama:chat:qwen3:8b `
+node skills/vibecheckbench/scripts/export-promptfoo.mjs \
+  --example complex \
+  --provider ollama:chat:qwen3:8b \
   --out promptfooconfig.ollama.yaml
 ```
 
 llama.cpp server example:
 
-```powershell
-llama-server.exe -m C:\models\your-model.gguf --host 127.0.0.1 --port 8080
+```bash
+llama-server -m /path/to/your-model.gguf --host 127.0.0.1 --port 8080
 ```
 
 Then use a Promptfoo provider id or the legacy runner's OpenAI-compatible settings.
@@ -670,26 +732,26 @@ case
 
 Example:
 
-```powershell
-node skills/vibecheckbench/scripts/run-profile.mjs `
-  --profile examples/public-agent-profile.yaml `
-  --case-file examples/public-agent-cases.json `
-  --prompt-file examples/public-agent-system-prompt.txt `
-  --cases 2 `
-  --repeat 3 `
+```bash
+node skills/vibecheckbench/scripts/run-profile.mjs \
+  --profile examples/public-agent-profile.yaml \
+  --case-file examples/public-agent-cases.json \
+  --prompt-file examples/public-agent-system-prompt.txt \
+  --cases 2 \
+  --repeat 3 \
   --save-report
 ```
 
 For higher-quality A/B runs, use a stronger or separate judge model:
 
-```powershell
-node skills/vibecheckbench/scripts/run-profile.mjs `
-  --provider llamacpp `
-  --judge-provider openai `
-  --judge-model gpt-4.1-mini `
-  --cases 3 `
-  --repeat 3 `
-  --save-report `
+```bash
+node skills/vibecheckbench/scripts/run-profile.mjs \
+  --provider llamacpp \
+  --judge-provider openai \
+  --judge-model gpt-4.1-mini \
+  --cases 3 \
+  --repeat 3 \
+  --save-report \
   --improve
 ```
 
@@ -699,7 +761,7 @@ Tiny local models often fail JSON judging, so the Promptfoo path is usually bett
 
 Run these before sharing changes:
 
-```powershell
+```bash
 node --check skills/vibecheckbench/scripts/export-promptfoo.mjs
 node --check skills/vibecheckbench/scripts/chart-results.mjs
 node --check skills/vibecheckbench/scripts/score-answers.mjs
@@ -713,30 +775,30 @@ node --check skills/vibecheckbench/scripts/mine-conversation-history.mjs
 node --check skills/vibecheckbench/scripts/optimize-config.mjs
 node skills/vibecheckbench/scripts/validate-tasks.mjs --tasks examples/tasks
 
-node skills/vibecheckbench/scripts/export-promptfoo.mjs `
-  --example complex `
-  --provider "file://examples/promptfoo-aligned-provider.mjs" `
-  --provider echo `
+node skills/vibecheckbench/scripts/export-promptfoo.mjs \
+  --example complex \
+  --provider "file://examples/promptfoo-aligned-provider.mjs" \
+  --provider echo \
   --out examples/promptfooconfig.models.example.yaml
 
-node skills/vibecheckbench/scripts/chart-results.mjs `
-  --input examples/promptfoo-results.user-fit-demo.json `
+node skills/vibecheckbench/scripts/chart-results.mjs \
+  --input examples/promptfoo-results.user-fit-demo.json \
   --out examples/skill-chart.user-fit-demo.html
 
-node skills/vibecheckbench/scripts/score-answers.mjs `
-  --input examples/captured-model-answers.example.json `
+node skills/vibecheckbench/scripts/score-answers.mjs \
+  --input examples/captured-model-answers.example.json \
   --out reports/results.captured.example.json
 
-node skills/vibecheckbench/scripts/run-local-subjects.mjs `
-  --provider "file://examples/promptfoo-aligned-provider.mjs" `
-  --provider echo `
-  --limit 1 `
+node skills/vibecheckbench/scripts/run-local-subjects.mjs \
+  --provider "file://examples/promptfoo-aligned-provider.mjs" \
+  --provider echo \
+  --limit 1 \
   --chart-out reports/skill-chart.local-smoke.html
 ```
 
 Optional real-model test:
 
-```powershell
+```bash
 npx promptfoo@latest eval -c promptfooconfig.models.yaml --output reports/results.json
 node skills/vibecheckbench/scripts/chart-results.mjs --input reports/results.json --out reports/skill-chart.html
 ```
