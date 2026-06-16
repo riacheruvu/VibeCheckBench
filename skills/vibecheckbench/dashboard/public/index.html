@@ -226,17 +226,19 @@
         <div><p class="eyebrow">NEW EVALUATION</p><h2 id="sheet-title">Choose what to compare</h2></div>
         <button id="close-sheet" class="icon-button" aria-label="Close">x</button>
       </div>
-      <div id="preset-list" class="preset-list"></div>
-      <div class="plain-note"><b>Why Promptfoo is optional</b><span>The dashboard can run simple local Ollama checks without extra packages. Promptfoo is useful when you want more providers, CI, richer reports, or hosted/self-hosted integrations.</span></div>
-      <details id="local-model-picker" class="local-model-picker">
-        <summary>Choose installed local models</summary>
-        <p>Use this when you want to compare specific Ollama models already on this machine.</p>
-        <div class="manual-model-entry">
-          <input id="custom-model-name" placeholder="e.g. hermes3:8b or llama3.2:1b">
-          <button id="add-custom-model" class="secondary-button" type="button">Add model</button>
-        </div>
-        <div id="local-model-list" class="local-model-list"></div>
-      </details>
+      <div class="sheet-scroll">
+        <div id="preset-list" class="preset-list"></div>
+        <div class="plain-note"><b>Why Promptfoo is optional</b><span>The dashboard can run simple local Ollama checks without extra packages. Promptfoo is useful when you want more providers, CI, richer reports, or hosted/self-hosted integrations.</span></div>
+        <details id="local-model-picker" class="local-model-picker">
+          <summary>Choose installed local models</summary>
+          <p>Use this when you want to compare specific Ollama models already on this machine.</p>
+          <div class="manual-model-entry">
+            <input id="custom-model-name" placeholder="e.g. hermes3:8b or llama3.2:1b">
+            <button id="add-custom-model" class="secondary-button" type="button">Add model</button>
+          </div>
+          <div id="local-model-list" class="local-model-list"></div>
+        </details>
+      </div>
       <div class="sheet-footer">
         <div id="preflight-status" class="local-assurance"><span class="status-dot"></span>Checking the local runner...</div>
         <button id="run-button" class="primary-button" disabled>Run evaluation</button>

@@ -165,10 +165,11 @@ h2 { margin: 0; font-size: 22px; line-height: 1.2; }
 .run-list-item { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
 .run-list-item button { border: 0; background: transparent; color: var(--teal); font-weight: 650; }
 .run-list-item p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.22); backdrop-filter: blur(7px); display: grid; place-items: center; padding: 20px; }
-.sheet { width: min(620px, 100%); background: rgba(255,255,255,.98); border: 1px solid #dce8f5; border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.22); backdrop-filter: blur(7px); display: grid; place-items: center; padding: 20px; overflow: hidden; }
+.sheet { width: min(620px, 100%); max-height: calc(100vh - 40px); background: rgba(255,255,255,.98); border: 1px solid #dce8f5; border-radius: 12px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; }
 .sheet-header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
 .icon-button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #e7e7ea; color: #525256; font-size: 20px; line-height: 1; }
+.sheet-scroll { min-height: 0; overflow-y: auto; padding-right: 4px; }
 .preset-list { display: grid; gap: 9px; margin: 20px 0; }
 .preset { border: 1px solid var(--line); border-radius: 8px; background: white; padding: 14px; display: flex; gap: 12px; text-align: left; }
 .preset:hover { border-color: rgba(8,127,120,.45); }
@@ -196,7 +197,7 @@ h2 { margin: 0; font-size: 22px; line-height: 1.2; }
   border: 1px solid var(--line); border-radius: 7px; background: white;
 }
 .model-choice span { overflow-wrap: anywhere; }
-.sheet-footer { display: flex; justify-content: space-between; gap: 20px; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; }
+.sheet-footer { display: flex; justify-content: space-between; gap: 20px; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; flex: 0 0 auto; }
 .local-assurance { display: flex; gap: 8px; color: var(--muted); font-size: 11px; max-width: 350px; }
 .workspace-heading {
   display: flex; justify-content: space-between; align-items: flex-end; gap: 28px; margin-bottom: 20px;
