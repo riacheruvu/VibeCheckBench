@@ -2,7 +2,7 @@
 
 A personal AI benchmark that tests whether your AI setup matches the way you actually want to work — then tells you what to change.
 
-**[Live demo →](https://riacheruvu.github.io/VibeCheckBench/)**
+**Live demo via Github Pages -> TBD**
 
 ![VibeCheckBench social preview](assets/vibecheckbench-social-preview.png)
 
@@ -210,4 +210,4 @@ node skills/vibecheckbench/scripts/run-case-study.mjs --case format-decision-loo
 
 MIT — if it helps your work, a link to the repo or a GitHub star is appreciated.
 
-[Medium article →](https://riacheruvu.medium.com/) · [Live demo →](https://riacheruvu.github.io/VibeCheckBench/)
+[Medium article →](https://riacheruvu.medium.com/) · Live demo →TBD
