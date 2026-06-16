@@ -6,6 +6,7 @@
     "dashboard": "node skills/vibecheckbench/dashboard/server.mjs",
     "dashboard:demo": "node skills/vibecheckbench/scripts/build-dashboard-demo.mjs",
     "skill:install": "node skills/vibecheckbench/scripts/install-codex-skill.mjs",
+    "promptfoo:check": "node skills/vibecheckbench/scripts/check-promptfoo.mjs",
     "fit:mine": "node skills/vibecheckbench/scripts/mine-conversation-history.mjs",
     "fit:promote": "node skills/vibecheckbench/scripts/promote-history-candidates.mjs",
     "fit:draft": "node skills/vibecheckbench/scripts/draft-test-case.mjs",

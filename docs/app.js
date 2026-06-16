@@ -195,44 +195,96 @@ function changeSuggestionTemplates(run) {
   const decision = run?.recommendation?.decision;
   if (!decision) return [];
   const target = decision.targetSurface || "instructions";
-  const weak = run.summary?.setups?.[0]?.weakest || "the weakest preference area";
+  const bestSetup = run.summary?.setups?.[0] || {};
+  const weak = bestSetup.weakest || "the weakest preference area";
+  const failures = (run.summary?.setups || []).flatMap(setup =>
+    (setup.failures || []).map(failure => ({ ...failure, setup: setup.name })));
+  const firstFailure = failures[0] || {};
+  const byPreference = {
+    "Doesn't overclaim": {
+      instruction: "Separate facts, assumptions, and what still needs checking. If the answer affects privacy, safety, cost, or trust, say what must be verified before relying on it.",
+      memory: "User prefers uncertainty to be explicit: separate facts, assumptions, and verification steps instead of sounding certain too early.",
+      skill: "When answering sensitive or factual questions, include: known facts, assumptions, verification needed, and a bounded next step.",
+    },
+    "Keeps it high-signal": {
+      instruction: "Lead with the answer. Keep responses concise by default, but include caveats that would change the user's decision.",
+      memory: "User prefers concise, high-signal answers that preserve necessary nuance.",
+      skill: "For explanation tasks, default to a short answer first. Add detail only when it changes the recommendation, risk, or next step.",
+    },
+    "Pushes back kindly": {
+      instruction: "Do not rubber-stamp weak claims. If the user's framing overreaches, say so kindly and offer a more supportable version.",
+      memory: "User values kind pushback over agreement when a claim is under-supported.",
+      skill: "For review tasks, identify unsupported claims, suggest safer wording, and preserve the user's intent without flattering.",
+    },
+    "Respects my asks": {
+      instruction: "Treat format, length, exclusions, and requested details as hard constraints. If a constraint conflicts with quality, explain the tradeoff briefly.",
+      memory: "User cares strongly about exact format and constraint following.",
+      skill: "Before answering, restate the required format internally and verify the response follows it exactly.",
+    },
+    "Helps me choose": {
+      instruction: "Show tradeoffs, decision criteria, and what evidence would change the recommendation. Leave the final decision with the user.",
+      memory: "User prefers decision support that clarifies tradeoffs without taking over.",
+      skill: "For decision tasks, provide options, criteria, uncertainty, and next information to gather rather than a one-size-fits-all answer.",
+    },
+    "Helps without overstepping": {
+      instruction: "Give bounded help for allowed requests. Avoid unnecessary refusal, oversharing, or asking for sensitive details.",
+      memory: "User prefers bounded, privacy-aware help that does not over-refuse.",
+      skill: "For sensitive workflows, help the user generalize or redact details before analysis instead of requesting private content.",
+    },
+  };
+  const specific = byPreference[weak] || byPreference[firstFailure.preference] || byPreference["Keeps it high-signal"];
+  const failureSnippet = firstFailure.output
+    ? firstFailure.output.replace(/\s+/g, " ").slice(0, 180)
+    : "No failed answer snippet was captured for this run.";
   const base = {
     source: run.name,
     headline: decision.headline,
     rationale: decision.rationale,
     nextExperiment: decision.nextExperiment,
+    weak,
+    failureSnippet,
   };
   const cards = [
     {
       surface: "Instructions",
+      target: "System prompt / AGENTS.md / CLAUDE.md",
       status: target === "instructions" ? "Recommended next" : "Possible follow-up",
       suggestion: target === "instructions"
-        ? decision.nextExperiment
-        : `If ${weak} keeps failing, make the system prompt more explicit about that behavior.`,
-      review: "Check whether this wording improves the weak behavior without making answers longer, more rigid, or more agreeable.",
+        ? `Try this prompt rule: "${specific.instruction}"`
+        : `If "${weak}" keeps failing, add a focused prompt rule: "${specific.instruction}"`,
+      patch: specific.instruction,
+      review: "Run the same tests again and inspect whether this fixed the miss without making answers longer, more rigid, or more agreeable.",
     },
     {
       surface: "Memory",
+      target: "User/project memory",
       status: target === "memory" ? "Recommended next" : "Watch for stale preference",
-      suggestion: "Store only durable preferences, not one-off requests. Prefer short memory like: 'User prefers concise, high-signal answers with necessary nuance.'",
+      suggestion: `Possible memory note: "${specific.memory}"`,
+      patch: specific.memory,
       review: "Confirm the preference appeared repeatedly or was explicitly stated before adding it to memory.",
     },
     {
       surface: "Skill",
+      target: "Skill instructions",
       status: target === "skills" ? "Recommended next" : "Useful when a workflow repeats",
-      suggestion: "If this is a repeatable workflow, add skill guidance for how to answer, what to avoid, and what evidence to check.",
+      suggestion: `Possible skill guidance: "${specific.skill}"`,
+      patch: specific.skill,
       review: "A skill should improve a specific recurring workflow, not become a dumping ground for preferences.",
     },
     {
       surface: "Model or routing",
+      target: "Model choice / routing rule",
       status: target === "model" || target === "routing" ? "Recommended next" : "Compare only if needed",
       suggestion: "Compare another local model or route this task type to the setup that scored best on the relevant preference.",
+      patch: `Route "${weak}" tasks to the setup that scored best on that preference, then rerun held-out checks before keeping the route.`,
       review: "Only switch models if the improvement is meaningful on held-out checks, not just one lucky answer.",
     },
     {
       surface: "Tools and access",
+      target: "Tool permissions / context policy",
       status: target === "tools" ? "Recommended next" : "Needs trace-aware checks",
       suggestion: "If the miss came from missing context or tool use, evaluate whether the setup needs different file, search, or connector access.",
+      patch: "Require trace evidence before changing tool access: what tool was needed, why final-answer scoring was insufficient, and what permission boundary applies.",
       review: "Tool changes should be checked with run traces, not only final-answer scoring.",
     },
   ];
@@ -250,8 +302,14 @@ function renderChangeSuggestions() {
         <p>${escapeHtml(item.suggestion)}</p>
       </div>
       <div>
+        <b>Target</b>
+        <span>${escapeHtml(item.target)}</span>
+        <b>Proposed wording</b>
+        <code>${escapeHtml(item.patch)}</code>
         <b>Why this came up</b>
         <span>${escapeHtml(item.rationale || item.headline)}</span>
+        <b>Example miss</b>
+        <span>${escapeHtml(item.failureSnippet)}</span>
         <b>Before keeping it</b>
         <span>${escapeHtml(item.review)}</span>
       </div>

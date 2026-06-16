@@ -349,9 +349,13 @@ h2 { margin: 0; font-size: 22px; line-height: 1.2; }
 }
 .change-card h3 { margin: 8px 0 8px; font-size: 18px; }
 .change-card p { margin: 0; color: var(--muted); }
-.change-card b, .change-card span { display: block; }
+.change-card b, .change-card span, .change-card code { display: block; }
 .change-card b { color: var(--teal); font-size: 11px; margin: 2px 0 4px; }
 .change-card div:last-child span { color: #4d586f; margin-bottom: 11px; }
+.change-card code {
+  white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 7px; padding: 9px 10px;
+  background: #f2f6fb; color: #304057; font-size: 12px; margin: 0 0 11px;
+}
 .surface-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .surface-card {
   border: 1px solid var(--line); border-radius: 8px; padding: 17px; background: white;

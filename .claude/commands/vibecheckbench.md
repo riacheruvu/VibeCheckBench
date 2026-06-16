@@ -1,18 +1,66 @@
-# /vibecheckbench - Export, run, or chart a preference-fit eval
+# /vibecheckbench - Run or review a personal-fit eval
 
-## Default: Promptfoo Export + Skill Chart
+## Friendly Default
 
-Use this path unless the user explicitly asks for A/B judge scoring.
+Act like a setup guide, not a command manual. First clarify what the user wants:
 
-Run local `node` export/chart commands yourself. Do not merely tell the user to run them.
+- Draft tests from a plain-language preference
+- Check whether local evaluation is ready
+- Compare installed local models
+- Export/run a Promptfoo comparison
+- Review suggested setup changes
 
-Default complex comparison:
+Run local commands yourself when safe. Do not merely tell the user to run them.
+Ask before installing packages, downloading model weights, or sending prompts to
+hosted providers.
 
-```text
-/vibecheckbench export --example complex --provider openai:chat:gpt-4.1-mini --provider ollama:chat:qwen3:8b --out promptfooconfig.models.yaml
+## Local Readiness Check
+
+Use this when the user says "use VibeCheckBench" or asks whether a model works:
+
+```bash
+node skills/vibecheckbench/scripts/check-promptfoo.mjs
 ```
 
-If the user says "these two configs" but does not provide two config files, prompts, provider ids, or paths, ask for them. If they ask for a demo or example comparison, use `--example complex` with bundled demo results instead of blocking.
+Also check Ollama if local models are relevant:
+
+```bash
+ollama list
+```
+
+Explain the result plainly:
+
+- "Ollama is running and I found these models..."
+- "Promptfoo is not installed, but the built-in Ollama runner still works."
+- "That model is not installed locally. I can pull it if you approve the download."
+
+## Draft Tests From A Preference
+
+If the user gives a sentence like "The user prefers concise, high-signal answers
+that preserve necessary nuance," draft a starter test locally:
+
+```bash
+node skills/vibecheckbench/scripts/draft-test-case.mjs --preference "$PREFERENCE" --stdout
+```
+
+Present it as editable review material: preference area, public-safe prompt,
+expected behavior, and whether it belongs in development or final-check cases.
+
+## Dashboard Path
+
+If the user wants a visual workflow:
+
+```bash
+npm run dashboard
+```
+
+Then open the local dashboard URL. The dashboard direct runner currently supports
+Ollama. Other providers can be used through Promptfoo/export paths.
+
+## Promptfoo Export + Skill Chart
+
+Use this path when the user wants provider comparisons, CI-shaped evals, or a
+Promptfoo report.
 
 Run:
 
@@ -33,6 +81,7 @@ Tell the user this chart is demo data: its model/config labels come from `exampl
 If the user asks for a real model comparison, check whether Promptfoo is already available before running or installing anything:
 
 ```bash
+node skills/vibecheckbench/scripts/check-promptfoo.mjs
 promptfoo --version
 npx --no-install promptfoo --version
 ```
@@ -51,6 +100,16 @@ If Promptfoo is not available, or if running it would download packages or call 
 - private or sensitive profiles should stay local unless the provider policy is acceptable
 
 Report generated artifact paths, provider ids, test count, and whether the chart is demo data or real model results.
+
+## Suggested Setup Changes
+
+When reviewing dashboard recommendations, do not claim files were changed. Treat
+instructions, memory, skills, tools, context, and routing as review surfaces.
+Suggest concrete wording only as a candidate, for example:
+
+- Prompt rule: "Lead with the answer. Keep responses concise by default, but include caveats that would change the user's decision."
+- Memory note: "User prefers concise, high-signal answers that preserve necessary nuance."
+- Skill guidance: "For explanation tasks, default to a short answer first. Add detail only when it changes the recommendation, risk, or next step."
 
 ## Validate
 

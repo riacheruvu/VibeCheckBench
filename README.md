@@ -315,6 +315,11 @@ VibeCheckBench skill chart
 
 VibeCheckBench owns the preference examples, generated rubrics, and visualization. Promptfoo owns provider execution, reports, UI, and CI.
 
+Promptfoo is optional for the local dashboard because VibeCheckBench includes a
+small built-in Ollama runner for no-key local checks. Promptfoo is still the
+better path when someone wants broader provider support, CI, richer reports,
+or hosted/self-hosted integrations.
+
 The older judge-based A/B runner is still included for experiments that need semantic default-vs-custom comparisons, but the default path is the Promptfoo regression suite.
 
 ## Task Packs
@@ -790,16 +795,43 @@ npm run skill:install
 Then in Codex:
 
 ```text
-Use $vibecheckbench to export the complex example and generate a skill chart.
+Use VibeCheckBench. Check whether local model evaluation is ready, explain what is installed in plain English, and ask before downloading anything.
 ```
 
-The skill is meant to run the local `node` commands for you. For real model comparisons, it should ask before installing/downloading Promptfoo or sending prompts to hosted providers.
+Or:
+
+```text
+Use VibeCheckBench to draft tests from this preference: "The user prefers concise, high-signal answers that preserve necessary nuance." Then show me what would be reviewed before adding it.
+```
+
+The skill is meant to run the local `node` commands for you. For real model
+comparisons, it checks whether Promptfoo is already available with:
+
+```bash
+npm run promptfoo:check
+```
+
+If Promptfoo is missing, the skill should explain that the built-in Ollama
+runner still works locally and ask before downloading a pinned Promptfoo
+package or sending prompts to hosted providers.
 
 Claude Code files are also included:
 
 ```text
 CLAUDE.md
 .claude/commands/vibecheckbench.md
+```
+
+In Claude Code, try:
+
+```text
+/vibecheckbench Check whether local evaluation is ready. Keep it nontechnical and ask before installing or downloading anything.
+```
+
+or:
+
+```text
+/vibecheckbench Draft a personal-fit test from: "The user prefers concise, high-signal answers that preserve necessary nuance."
 ```
 
 ## Legacy judge-based runner

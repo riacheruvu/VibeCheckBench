@@ -168,6 +168,7 @@ Use `--example complex` when the user wants the richer, public-safe preference s
 4. If the user asked for a real model comparison, check whether Promptfoo is already available before running or installing anything:
 
 ```bash
+node "{baseDir}/scripts/check-promptfoo.mjs"
 promptfoo --version
 npx --no-install promptfoo --version
 ```
@@ -337,12 +338,18 @@ works, act like a setup guide:
    Studio, vLLM, or a future Hugging Face adapter before VibeCheckBench can run
    them directly.
 
+For Promptfoo specifically, run `check-promptfoo.mjs` first and summarize it in
+plain language. If it is missing, say: "Promptfoo is not installed yet. The
+built-in Ollama runner still works locally. I can install a pinned Promptfoo
+package if you approve the download."
+
 ## Validation
 
 Before presenting a generated suite as ready:
 
 ```bash
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
+node --check "{baseDir}/scripts/check-promptfoo.mjs"
 node --check "{baseDir}/scripts/chart-results.mjs"
 node --check "{baseDir}/scripts/score-answers.mjs"
 node --check "{baseDir}/scripts/run-local-subjects.mjs"
