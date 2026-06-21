@@ -60,6 +60,17 @@ Open `http://127.0.0.1:4173`. The dashboard can:
 
 ---
 
+## Safety default
+
+Assistant workflows should stay local and draft-only unless the user explicitly
+asks to run an evaluation. Creating a fit review or drafting tests should not
+install packages, download models, call hosted APIs, or run local model
+comparisons as a side effect. If a step requires a package install, model
+download, `npx`, hosted provider, or external API, the assistant should ask
+first in plain language.
+
+---
+
 ## What it evaluates
 
 Six preference areas, grounded in documented AI failure modes:
@@ -74,6 +85,89 @@ Six preference areas, grounded in documented AI failure modes:
 | **Helps me choose** | Shows tradeoffs without taking over the decision |
 
 ![Preference matrix](assets/vibecheckbench-preference-matrix.png)
+
+---
+
+## Start with one preference
+
+For a lightweight local review, VibeCheckBench can turn one plain-language
+preference into a small fit-review folder:
+
+```text
+Use VibeCheckBench. Create a fit review from this preference:
+"The user prefers concise, high-signal answers that preserve necessary nuance."
+```
+
+In assistant workflows, the skill should run the local script for you. For
+contributors testing the repo directly:
+
+```bash
+npm run fit:review -- "The user prefers concise, high-signal answers that preserve necessary nuance."
+```
+
+This creates `vibecheckbench-out/`:
+
+| File | What it is for |
+|---|---|
+| `VIBE_REPORT.md` | Plain-English review of the preference, draft case, failure modes, and next rerun. |
+| `fit-report.html` | A simple visual report for reading or sharing locally. |
+| `eval-cases.json` | The generated public-safe draft case. |
+| `run-results.json` | Reserved for real model/config results; starts as `not_run`. |
+| `suggested-config.md` | Candidate wording for a prompt, memory note, or skill instruction. |
+| `improvement-plan.md` | Plain-English baseline/candidate experiment plan for the next rerun. |
+| `next-experiment.json` | Machine-readable version of the self-improvement step and gate. |
+| `provenance.json` | Local provenance and source hash without storing private text. |
+
+This is deliberately not an automatic optimizer. It produces review artifacts:
+what to test, what good behavior looks like, and what setup change might be
+worth trying after a held-out rerun. The self-improvement step is a small
+experiment: hold the baseline steady, try one candidate setup change, inspect
+the missed answers, and keep the change only if held-out checks improve without
+regressions.
+
+### Repo-local CLI
+
+The repo also includes a small command dispatcher. Until the package is
+published or linked globally, run it through Node or npm:
+
+```bash
+node bin/vibecheckbench.mjs draft "I want concise, honest answers"
+npm run vibecheckbench -- demo pushback
+npm run vibecheckbench -- run
+npm run vibecheckbench -- capture --setup codex
+npm run vibecheckbench -- report
+npm run vibecheckbench -- recommend
+```
+
+These are convenience commands over the same local scripts:
+
+| Command | What it does |
+|---|---|
+| `draft` | Creates a starter public-safe test case from one preference sentence. |
+| `demo pushback` | Creates a fit-review folder for a public-safe pushback example. |
+| `run` | Runs a no-key local smoke comparison with the aligned mock provider and echo baseline. |
+| `capture --setup codex` | Creates a local answer-capture session for model-picker comparisons. |
+| `report` | Rebuilds or points to the current fit report. |
+| `recommend` | Prints the planned next experiment or generates a recommendation from completed results. |
+
+---
+
+## Case studies
+
+The checked-in case studies show the loop without private data or hosted APIs:
+
+- **Feedback friction loop** turns "too broad" and "too agreeable" corrections
+  into tests, then checks whether a concise evidence-aware instruction setup
+  improves on a final-check pushback case.
+- **Format and decision loop** turns exact-format and decision-agency
+  corrections into tests, then checks whether a constraint-aware setup reduces
+  cleanup work.
+
+Run both:
+
+```bash
+npm run case:studies
+```
 
 ---
 

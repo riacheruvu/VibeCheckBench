@@ -8,6 +8,26 @@ metadata: {"openclaw":{"requires":{"bins":["node","python3"]}},"codex":{"require
 
 Use this skill when the user wants to test whether an AI setup "feels right" for their preferences, build a regression suite from preference YAML, or compare prompt/model/config behavior.
 
+## Default Safety Posture
+
+Default to local, draft-only work unless the user explicitly asks to run model
+evaluations. Do not install packages, download model weights, pull Ollama
+models, run `npx`, call hosted providers, or send prompts/outputs to external
+services without explicit user approval.
+
+For a request phrased as "create a fit review," "draft tests," or "turn this
+preference into a review," only create local review artifacts. Do not also run
+Ollama, Promptfoo, hosted APIs, or model comparisons unless the user separately
+asks for a run/comparison/smoke test.
+
+If the user adds "use only local Ollama models that are already installed," that
+is permission to use installed local Ollama models only when the request is
+actually asking for an evaluation run. It is not permission to add model runs to
+a draft-only fit-review request.
+
+If a task needs anything beyond local file/script execution, stop and ask in
+plain language before proceeding.
+
 ## Two Evaluation Modes
 
 - Preference Fit Eval: score the model's actual answers against the user's preference profile. This is the core VibeCheckBench use case.
@@ -59,6 +79,21 @@ prompt to write, draft a starter case locally:
 ```bash
 node "{baseDir}/scripts/draft-test-case.mjs" --preference "The user prefers concise, high-signal answers that preserve necessary nuance." --stdout
 ```
+
+When the user wants a simple, nontechnical artifact from that preference, create
+a local fit review:
+
+```bash
+node "{baseDir}/scripts/create-fit-review.mjs" "The user prefers concise, high-signal answers that preserve necessary nuance."
+```
+
+This writes `vibecheckbench-out/` with `VIBE_REPORT.md`, `fit-report.html`,
+`eval-cases.json`, `run-results.json`, `suggested-config.md`, and
+`provenance.json`, plus `improvement-plan.md` and `next-experiment.json` for
+the planned self-improvement step. Explain that `run-results.json` is
+intentionally marked `not_run` until a real model/config comparison is
+attached. Treat the suggested config as a candidate for review, not as an
+automatic change.
 
 Treat the result as a review draft. The user should still edit or approve the
 preference, public-safe prompt, expected behavior, and development/held-out
@@ -350,6 +385,7 @@ Before presenting a generated suite as ready:
 ```bash
 node --check "{baseDir}/scripts/export-promptfoo.mjs"
 node --check "{baseDir}/scripts/check-promptfoo.mjs"
+node --check "{baseDir}/scripts/create-fit-review.mjs"
 node --check "{baseDir}/scripts/chart-results.mjs"
 node --check "{baseDir}/scripts/score-answers.mjs"
 node --check "{baseDir}/scripts/run-local-subjects.mjs"

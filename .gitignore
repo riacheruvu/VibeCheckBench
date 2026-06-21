@@ -6,6 +6,7 @@ logs/
 tools/
 downloads/
 reports/
+vibecheckbench-out/
 captures/
 captures/dashboard-runs/
 generated-history/
