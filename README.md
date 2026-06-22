@@ -1,6 +1,6 @@
 # VibeCheckBench
 
-A personal AI benchmark that tests whether your AI setup matches the way you actually want to work — then tells you what to change.
+VibeCheckBench helps people discover, evaluate, and improve the AI setups that fit how they actually work.
 
 **Live demo via Github Pages -> TBD**
 
@@ -8,17 +8,62 @@ A personal AI benchmark that tests whether your AI setup matches the way you act
 
 ---
 
-Most AI benchmarks ask which model is best overall. VibeCheckBench asks a more personal question:
+Most AI benchmarks ask:
 
-> Does this model, prompt, memory file, or agent setup fit the way *I* want to work?
+> Which model is best overall?
 
-It focuses on everyday interaction failures that standard benchmarks miss: answers that are too long, too agreeable, too vague, or too poor at following exact instructions.
+VibeCheckBench asks a different question:
+
+> Which combination of models, instructions, memory, tools, and workflows best matches this person?
+
+The goal is not to find the smartest AI.
+
+The goal is to find the AI setup that works best for a particular user.
+
+---
+
+## Why?
+
+Many frustrating AI interactions are not capability failures.
+
+They are fit failures.
+
+Examples:
+
+* The model is technically correct but far too verbose.
+* The model agrees when it should push back.
+* The model ignores requested constraints.
+* The model takes over decisions instead of helping the user think.
+* The model gives useful information in a way that feels wrong for that person.
+
+Traditional benchmarks rarely measure these behaviors.
+
+VibeCheckBench focuses on the interaction patterns that determine whether an AI system is actually useful in day-to-day work.
+
+---
+
+## What is an AI setup?
+
+An AI setup may include:
+
+* Models (local or cloud)
+* System prompts and instructions
+* Memory systems
+* Retrieval pipelines
+* Tool access
+* Coding agents
+* Routing rules
+* User preferences
+
+Two people can use the same model and have dramatically different experiences because the surrounding setup differs.
+
+VibeCheckBench evaluates the setup, not just the model.
 
 ---
 
 ## The core loop
 
-```
+```text
 private interaction evidence
   → reviewable preference candidates
   → public-safe eval cases
@@ -30,6 +75,146 @@ private interaction evidence
 Raw conversation content stays local. You review every candidate. Approved cases preserve provenance through hashes, not copied private text.
 
 ---
+
+## Beyond model benchmarks
+
+Most AI benchmarks rank models.
+
+Real users choose AI setups.
+
+A setup may include:
+
+* Local models (Qwen, Gemma, GLM, Llama)
+* Cloud models (GPT, Claude, Gemini)
+* Coding agents (Claude Code, Codex, Cursor)
+* Memory systems
+* Retrieval pipelines
+* Tool access
+* Routing rules
+
+VibeCheckBench evaluates the entire setup through the lens of user preference fit.
+
+The goal is not to find the smartest model.
+
+The goal is to find the setup that works best for a particular person.
+
+---
+
+## Current focus
+
+Today VibeCheckBench supports:
+
+* Preference-driven evaluation
+* Public-safe test generation
+* Local-first workflows
+* Setup comparison
+* Reviewable improvement suggestions
+
+---
+
+## Roadmap
+
+### Current
+
+#### Preference-driven evaluation
+
+Measure how well an AI system aligns with user preferences such as:
+
+* Doesn't overclaim
+* Keeps it high signal
+* Pushes back kindly
+* Respects my asks
+* Helps without overstepping
+* Helps me choose
+
+#### Setup experimentation
+
+Compare prompts, memory configurations, models, tools, and workflows using reviewable evaluation cases.
+
+#### Local-first workflows
+
+Support privacy-preserving evaluation using local data and local models.
+
+---
+
+### Next
+
+#### Local model evaluation
+
+Compare local AI systems across:
+
+* Preference fit
+* Speed
+* Resource requirements
+* Context size
+* Cost
+
+#### Preference profiles
+
+Help users identify recurring patterns in the kinds of AI interactions they prefer.
+
+#### Setup recommendations
+
+Recommend promising next experiments based on evaluation results.
+
+Examples:
+
+* Try a different instruction set
+* Change memory behavior
+* Route certain tasks to a different model
+* Switch between local and cloud systems
+
+---
+
+### Future
+
+#### Multimodal evaluation
+
+Evaluate preference fit for:
+
+* Images
+* Screenshots
+* PDFs
+* Slide decks
+* Diagrams
+* User interfaces
+
+#### Coding-agent evaluation
+
+Compare coding assistants, agent workflows, and development environments through the lens of user preference fit.
+
+#### Personalized AI stacks
+
+Help users understand which combination of:
+
+* Local models
+* Cloud models
+* Agents
+* Tools
+* Memory systems
+
+works best for their goals, constraints, and working style.
+
+#### AI setup discovery
+
+Make it easier for people to find AI systems that fit their needs rather than relying solely on model leaderboards.
+
+---
+
+## What it evaluates
+
+Six preference areas, grounded in documented AI failure modes:
+
+| Area                           | What it tests                                        |
+| ------------------------------ | ---------------------------------------------------- |
+| **Doesn't overclaim**          | Separates facts, assumptions, and uncertainty        |
+| **Keeps it high-signal**       | Respects your time without dropping nuance           |
+| **Pushes back kindly**         | Supports without flattering or rubber-stamping       |
+| **Respects my asks**           | Keeps requested format, constraints, level of detail |
+| **Helps without overstepping** | Bounded help, no over-refusal or oversharing         |
+| **Helps me choose**            | Shows tradeoffs without taking over the decision     |
+
+![Preference matrix](assets/vibecheckbench-preference-matrix.png)
 
 ## Quickstart (no API key needed)
 
